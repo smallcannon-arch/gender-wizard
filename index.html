@@ -350,6 +350,7 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
   font-family: inherit;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.loading { cursor: wait; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover:not(:disabled) { filter: brightness(1.15); }
 .btn-secondary { background: var(--warm); color: var(--ink); border: 1px solid var(--line); }
@@ -516,7 +517,7 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
       </label>
     </div>
     <div class="btn-group">
-      <button class="btn btn-primary" id="btnConfirmExternal" disabled onclick="confirmFullExternal()">確認並推進</button>
+      <button class="btn btn-primary" id="btnConfirmExternal" disabled onclick="withLoading(confirmFullExternal, this)">確認並推進</button>
       <button class="btn btn-secondary" onclick="closeModal('modalFullExternal')">取消</button>
     </div>
   </div>
@@ -921,9 +922,9 @@ function renderPreStage(area, btns, c, d) {
     </div>`;
 
   btns.innerHTML = `
-    <button class="btn btn-primary" onclick="savePreStage()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvancePreStage()">儲存並推進 →</button>
-    ${c.case_id ? `<button class="btn btn-danger btn-sm" onclick="deleteCase()">🗑 刪除案件</button>` : ''}
+    <button class="btn btn-primary" onclick="withLoading(savePreStage, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvancePreStage, this)">儲存並推進 →</button>
+    ${c.case_id ? `<button class="btn btn-danger btn-sm" onclick="withLoading(deleteCase, this)">🗑 刪除案件</button>` : ''}
   `;
 }
 
@@ -1025,9 +1026,9 @@ function renderStage01(area, btns, c, d) {
   onAcceptDecisionChange();
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage01()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvanceStage01()">儲存並推進 →</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage01, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage01, this)">儲存並推進 →</button>
   `;
 }
 
@@ -1125,9 +1126,9 @@ function renderStage02(area, btns, c, d) {
     </div>`;
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage02()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvanceStage02()">儲存並推進 →</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage02, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage02, this)">儲存並推進 →</button>
   `;
 }
 
@@ -1176,9 +1177,9 @@ function renderStage03(area, btns, c, d) {
     </div>`;
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage03()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvanceStage03()">儲存並推進 →</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage03, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage03, this)">儲存並推進 →</button>
   `;
 }
 
@@ -1237,9 +1238,9 @@ function renderStage04(area, btns, c, d) {
     </div>`;
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage04()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvanceStage04()">儲存並推進 →</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage04, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage04, this)">儲存並推進 →</button>
   `;
 }
 
@@ -1298,10 +1299,10 @@ function renderStage05(area, btns, c, d) {
   sel.dispatchEvent(new Event('change'));
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage05()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndAdvanceStage05()">儲存並推進至主管審議 →</button>
-    <button class="btn btn-danger" onclick="closeFromStage05()">直接結案（未申復）</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage05, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage05, this)">儲存並推進至主管審議 →</button>
+    <button class="btn btn-danger" onclick="withLoading(closeFromStage05, this)">直接結案（未申復）</button>
   `;
 }
 
@@ -1368,9 +1369,9 @@ function renderStage06(area, btns, c, d) {
     </div>`;
 
   btns.innerHTML = `
-    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
-    <button class="btn btn-primary" onclick="saveStage06()">💾 儲存</button>
-    <button class="btn btn-ok" onclick="saveAndCloseStage06()">儲存並結案 ✓</button>
+    <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
+    <button class="btn btn-primary" onclick="withLoading(saveStage06, this)">💾 儲存</button>
+    <button class="btn btn-ok" onclick="withLoading(saveAndCloseStage06, this)">儲存並結案 ✓</button>
   `;
 }
 
@@ -1697,6 +1698,29 @@ function formatDate(str) {
     const d = new Date(str);
     return `${d.getMonth()+1}/${d.getDate()}`;
   } catch { return str; }
+}
+
+// ── 防連點 + Loading 回饋 ────────────────────────────────
+let _busy = false;
+async function withLoading(fn, btnEl) {
+  if (_busy) return;
+  _busy = true;
+  // 禁用所有按鈕區按鈕
+  const allBtns = document.querySelectorAll('#wizardButtons .btn, .modal .btn');
+  allBtns.forEach(b => b.disabled = true);
+  // 記住觸發按鈕的原始文字
+  let origText = '';
+  if (btnEl) {
+    origText = btnEl.textContent;
+    btnEl.textContent = '處理中...';
+  }
+  try {
+    await fn();
+  } finally {
+    _busy = false;
+    allBtns.forEach(b => b.disabled = false);
+    if (btnEl) btnEl.textContent = origText;
+  }
 }
 
 // ── UI 工具 ──────────────────────────────────────────────
