@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校園性別事件處理流程精靈</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ── CSS 變數 ──────────────────────────────────────────── */
+:root {
+  --ink: #1a1a2e;
+  --paper: #f5f3ee;
+  --warm: #ede9e0;
+  --line: #c5bfb0;
+  --accent: #8b1a1a;
+  --ok: #1a5c2e;
+  --warn: #7a4a00;
+  --info: #1a3a5c;
+  --ok-light: #d4edda;
+  --warn-light: #fff3cd;
+  --accent-pale: #fdf0f0;
+  --danger: #c0392b;
+  --danger-light: #fdecea;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(26,26,46,0.08);
+  --shadow-lg: 0 8px 32px rgba(26,26,46,0.12);
+}
+
+/* ── 全域 ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
+
+/* ── 佈局 ──────────────────────────────────────────────── */
+.app-header {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.app-header h1 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.app-header .subtitle {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 300;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+.user-info img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(245,243,238,0.3);
+}
+.btn-logout {
+  background: none;
+  border: 1px solid rgba(245,243,238,0.3);
+  color: var(--paper);
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.btn-logout:hover { background: rgba(245,243,238,0.1); }
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* ── 登入畫面 ──────────────────────────────────────────── */
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+}
+.login-screen h2 {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+.login-screen p {
+  color: #666;
+  margin-bottom: 32px;
+  font-size: 0.95rem;
+}
+.login-screen .law-badge {
+  display: inline-block;
+  background: var(--accent-pale);
+  color: var(--accent);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+/* ── 案件列表 ──────────────────────────────────────────── */
+.case-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.case-list-header h2 { font-size: 1.3rem; }
+.btn-new {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-new:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+.case-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 4px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.case-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.case-card.active { border-left-color: var(--accent); }
+.case-card.closed { border-left-color: var(--ok); opacity: 0.7; }
+.case-card .case-title { font-weight: 500; font-size: 1rem; }
+.case-card .case-meta {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 4px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.case-card .case-meta span { white-space: nowrap; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-stage { background: var(--info); color: #fff; }
+.badge-type { background: var(--accent-pale); color: var(--accent); }
+.badge-status-ok { background: var(--ok-light); color: var(--ok); }
+.badge-status-warn { background: var(--warn-light); color: var(--warn); }
+.badge-status-closed { background: var(--ok-light); color: var(--ok); }
+.badge-status-danger { background: var(--danger-light); color: var(--danger); }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+
+/* ── 精靈步驟條 ────────────────────────────────────────── */
+.wizard-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 28px;
+  padding: 16px 8px;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.3s;
+  background: var(--warm);
+  color: var(--line);
+  border: 2px solid var(--line);
+}
+.step-dot.done {
+  background: var(--ok);
+  color: #fff;
+  border-color: var(--ok);
+}
+.step-dot.current {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: scale(1.15);
+}
+.step-connector {
+  width: 20px;
+  height: 2px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+.step-connector.done { background: var(--ok); }
+
+/* ── 表單面板 ──────────────────────────────────────────── */
+.panel {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+.panel-title {
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+  color: var(--accent);
+}
+.panel-desc {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--warm);
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.form-group label .required {
+  color: var(--accent);
+  margin-left: 2px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fff;
+  transition: border-color 0.2s;
+  color: var(--ink);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139,26,26,0.08);
+}
+.form-group textarea { min-height: 100px; resize: vertical; }
+.form-group .hint {
+  font-size: 0.78rem;
+  color: #999;
+  margin-top: 4px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* ── 警告 / 提示框 ────────────────────────────────────── */
+.alert {
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.alert-warn { background: var(--warn-light); color: var(--warn); border: 1px solid #e6d6a0; }
+.alert-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #f5c6cb; }
+.alert-info { background: #e3edf5; color: var(--info); border: 1px solid #b8d0e8; }
+.alert-ok { background: var(--ok-light); color: var(--ok); border: 1px solid #a3d9b1; }
+
+/* ── 按鈕群組 ──────────────────────────────────────────── */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-secondary { background: var(--warm); color: var(--ink); border: 1px solid var(--line); }
+.btn-secondary:hover:not(:disabled) { background: #e0dcd3; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-ok { background: var(--ok); color: #fff; }
+.btn-ok:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+.btn-back { background: none; color: var(--info); border: 1px solid var(--info); }
+.btn-back:hover:not(:disabled) { background: rgba(26,58,92,0.05); }
+
+/* ── 期限儀表板 ────────────────────────────────────────── */
+.deadline-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--info);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.deadline-card.overdue { border-left-color: var(--danger); background: var(--danger-light); }
+.deadline-card.warning { border-left-color: var(--warn); background: var(--warn-light); }
+.deadline-card.safe { border-left-color: var(--ok); }
+.deadline-label { font-weight: 500; font-size: 0.9rem; }
+.deadline-dates { font-size: 0.8rem; color: #888; }
+.deadline-remaining {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+.deadline-remaining.overdue { background: var(--danger); color: #fff; }
+.deadline-remaining.warning { background: var(--warn); color: #fff; }
+.deadline-remaining.safe { background: var(--ok-light); color: var(--ok); }
+
+/* ── 外聘確認 Modal ────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26,26,46,0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+.modal h3 { font-size: 1.1rem; color: var(--accent); margin-bottom: 12px; }
+.modal p { font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+
+.checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── Loading ───────────────────────────────────────────── */
+.loading {
+  display: none;
+  text-align: center;
+  padding: 40px;
+  color: #999;
+}
+.loading.active { display: block; }
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--warm);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ─────────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.3s ease;
+  max-width: 360px;
+}
+.toast-ok { background: var(--ok); color: #fff; }
+.toast-error { background: var(--danger); color: #fff; }
+.toast-warn { background: var(--warn); color: #fff; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
+
+/* ── 頁尾 ──────────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 0.75rem;
+  color: #aaa;
+  border-top: 1px solid var(--warm);
+  margin-top: 40px;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<header class="app-header">
+  <div>
+    <h1>校園性別事件處理流程精靈</h1>
+    <div class="subtitle">性別平等教育法 · 校園性騷擾 / 性霸凌 / 性侵害</div>
+  </div>
+  <div class="user-info" id="userInfo" style="display:none">
+    <img id="userAvatar" src="" alt="">
+    <span id="userName"></span>
+    <button class="btn-logout" onclick="logout()">登出</button>
+  </div>
+</header>
+
+<!-- ═══ Toast Container ═══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══ Modal: 外聘確認 ═══ -->
+<div class="modal-overlay" id="modalFullExternal">
+  <div class="modal">
+    <h3>⚠️ 調查小組全部外聘確認</h3>
+    <div class="alert alert-danger">
+      <span class="alert-icon">⚠</span>
+      <div>
+        依性別平等教育法規定，行為人為<strong>校長、教師、職員或工友</strong>時，
+        調查小組成員應<strong>全部外聘</strong>。
+      </div>
+    </div>
+    <div class="checkbox-group">
+      <input type="checkbox" id="confirmFullExternal">
+      <label for="confirmFullExternal" style="font-size:0.9rem;">
+        我確認已知悉此案調查小組須全部外聘，且已安排外聘委員。
+      </label>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="btnConfirmExternal" disabled onclick="confirmFullExternal()">確認並推進</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalFullExternal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Main Content ═══ -->
+<div class="container" id="mainContent">
+
+  <!-- ── 登入畫面 ── -->
+  <div id="viewLogin" class="login-screen">
+    <div class="law-badge">性別平等教育法</div>
+    <h2>校園性別事件處理流程精靈</h2>
+    <p>協助學校行政人員依法處理校園性騷擾、性霸凌及性侵害事件</p>
+    <div id="googleSignInBtn"></div>
+    <p style="margin-top:16px;font-size:0.78rem;color:#aaa;">使用 Google 帳號登入以開始使用</p>
+  </div>
+
+  <!-- ── 案件列表 ── -->
+  <div id="viewList" style="display:none">
+    <div class="case-list-header">
+      <h2>我的案件</h2>
+      <button class="btn-new" onclick="newCase()">＋ 新增案件</button>
+    </div>
+    <div id="caseListLoading" class="loading active">
+      <div class="spinner"></div>
+      載入中...
+    </div>
+    <div id="caseListContent"></div>
+  </div>
+
+  <!-- ── 案件編輯（精靈） ── -->
+  <div id="viewWizard" style="display:none">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <button class="btn btn-back btn-sm" onclick="backToList()">← 返回列表</button>
+      <h2 id="wizardTitle" style="font-size:1.15rem;"></h2>
+    </div>
+
+    <!-- 步驟條 -->
+    <div class="wizard-progress" id="wizardProgress"></div>
+
+    <!-- 期限儀表板 -->
+    <div id="deadlinePanel" style="display:none">
+      <h3 style="font-size:1rem;margin-bottom:12px;color:var(--info);">⏰ 法定期限追蹤</h3>
+      <div id="deadlineList"></div>
+    </div>
+
+    <!-- 動態表單區 -->
+    <div id="wizardFormArea"></div>
+
+    <!-- 按鈕區 -->
+    <div class="btn-group" id="wizardButtons"></div>
+  </div>
+
+</div>
+
+<!-- ═══ Footer ═══ -->
+<footer class="app-footer">
+  © 2026 內湖國小總務處　開發者：江志宏<br>
+  gender-wizard v1 · 適用法規：性別平等教育法
+</footer>
+
+<script>
+// ============================================================
+// gender-wizard — 前端邏輯
+// ============================================================
+
+const PROXY_URL = 'https://gender-proxy.smallcannon.workers.dev';
+const CLIENT_ID = '708047059390-2qhkln2rq34enarpa3ipucukm7bbl97m.apps.googleusercontent.com';
+
+// ── 階段定義 ─────────────────────────────────────────────
+const STAGES = [
+  { id: 'PRE_STAGE',  label: '收件',   num: '收' },
+  { id: 'STAGE_01',   label: '受理決定', num: '01' },
+  { id: 'STAGE_02',   label: '組調查組', num: '02' },
+  { id: 'STAGE_03',   label: '調查進行', num: '03' },
+  { id: 'STAGE_04',   label: '性平議決', num: '04' },
+  { id: 'STAGE_05',   label: '申復',   num: '05' },
+  { id: 'STAGE_06',   label: '主管審議', num: '06' },
+  { id: 'CLOSED',     label: '結案',   num: '✓' },
+];
+
+const CASE_TYPE_MAP = {
+  SEXUAL_HARASSMENT: '性騷擾',
+  SEXUAL_BULLYING:   '性霸凌',
+  SEXUAL_ASSAULT:    '性侵害',
+};
+
+const RESPONDENT_ROLE_MAP = {
+  PRINCIPAL: '校長',
+  TEACHER:   '教師',
+  STAFF:     '職員/工友',
+  STUDENT:   '學生',
+};
+
+// ── 全域狀態 ─────────────────────────────────────────────
+let currentUser = null;   // { email, name, picture, token }
+let currentCase = null;   // 目前編輯的案件完整資料
+let caseList = [];        // 案件列表
+
+// ── Google 登入 ──────────────────────────────────────────
+window.onload = function() {
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: true,
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignInBtn'),
+    { theme: 'outline', size: 'large', text: 'signin_with', locale: 'zh-TW', width: 280 }
+  );
+};
+
+function handleCredentialResponse(response) {
+  const payload = parseJwt(response.credential);
+  currentUser = {
+    email: payload.email,
+    name: payload.name,
+    picture: payload.picture,
+    token: response.credential,
+  };
+  document.getElementById('userAvatar').src = payload.picture || '';
+  document.getElementById('userName').textContent = payload.name || payload.email;
+  document.getElementById('userInfo').style.display = 'flex';
+  showView('viewList');
+  loadCaseList();
+}
+
+function logout() {
+  google.accounts.id.disableAutoSelect();
+  currentUser = null;
+  currentCase = null;
+  document.getElementById('userInfo').style.display = 'none';
+  showView('viewLogin');
+}
+
+function parseJwt(token) {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(decodeURIComponent(atob(base64).split('').map(
+    c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+  ).join('')));
+}
+
+// ── API 呼叫 ─────────────────────────────────────────────
+async function api(action, params = {}) {
+  const body = { action, ...params };
+  const res = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${currentUser.token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!data.ok && data.error === 'INVALID_TOKEN') {
+    toast('登入已過期，請重新登入', 'error');
+    logout();
+    throw new Error('TOKEN_EXPIRED');
+  }
+  return data;
+}
+
+// ── 視圖切換 ─────────────────────────────────────────────
+function showView(id) {
+  ['viewLogin', 'viewList', 'viewWizard'].forEach(v => {
+    document.getElementById(v).style.display = v === id ? '' : 'none';
+  });
+}
+
+// ── 案件列表 ─────────────────────────────────────────────
+async function loadCaseList() {
+  document.getElementById('caseListLoading').classList.add('active');
+  document.getElementById('caseListContent').innerHTML = '';
+  try {
+    const res = await api('gender_list');
+    if (res.ok) {
+      caseList = res.list || [];
+      renderCaseList();
+    } else {
+      toast('載入失敗：' + (res.error || '未知錯誤'), 'error');
+    }
+  } catch (e) {
+    if (e.message !== 'TOKEN_EXPIRED') toast('網路錯誤', 'error');
+  }
+  document.getElementById('caseListLoading').classList.remove('active');
+}
+
+function renderCaseList() {
+  const el = document.getElementById('caseListContent');
+  if (caseList.length === 0) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>目前沒有案件，點擊「新增案件」開始</p>
+      </div>`;
+    return;
+  }
+  el.innerHTML = caseList.map(c => {
+    const isClosed = ['已結案', '不受理結案'].includes(c.status);
+    const stageLabel = (STAGES.find(s => s.id === c.stage) || {}).label || c.stage;
+    const typeLabel = CASE_TYPE_MAP[c.case_type] || c.case_type;
+    return `
+      <div class="case-card ${isClosed ? 'closed' : 'active'}" onclick="openCase('${c.case_id}')">
+        <div>
+          <div class="case-title">${esc(c.case_name || '未命名案件')}</div>
+          <div class="case-meta">
+            <span class="badge badge-type">${typeLabel}</span>
+            <span class="badge badge-stage">${stageLabel}</span>
+            ${c.status ? `<span class="badge ${isClosed ? 'badge-status-closed' : 'badge-status-warn'}">${esc(c.status)}</span>` : ''}
+            <span>${esc(c.school || '')}</span>
+            <span>${c.updated_at ? formatDate(c.updated_at) : ''}</span>
+          </div>
+        </div>
+        <span style="color:#ccc;font-size:1.2rem;">›</span>
+      </div>`;
+  }).join('');
+}
+
+// ── 新增案件 ─────────────────────────────────────────────
+function newCase() {
+  currentCase = {
+    case_id: null,
+    stage: 'PRE_STAGE',
+    status: '處理中',
+    case_type: '',
+    case_name: '',
+    school: '',
+    is_cross_school: false,
+    data_json: {},
+  };
+  showView('viewWizard');
+  renderWizard();
+}
+
+// ── 開啟案件 ─────────────────────────────────────────────
+async function openCase(caseId) {
+  showView('viewWizard');
+  document.getElementById('wizardFormArea').innerHTML = '<div class="loading active"><div class="spinner"></div>載入案件...</div>';
+  document.getElementById('wizardButtons').innerHTML = '';
+  document.getElementById('wizardProgress').innerHTML = '';
+  try {
+    const res = await api('gender_load', { case_id: caseId });
+    if (res.ok) {
+      currentCase = res.case;
+      renderWizard();
+    } else {
+      toast('載入案件失敗：' + res.error, 'error');
+      backToList();
+    }
+  } catch (e) {
+    if (e.message !== 'TOKEN_EXPIRED') { toast('網路錯誤', 'error'); backToList(); }
+  }
+}
+
+// ── 返回列表 ─────────────────────────────────────────────
+function backToList() {
+  currentCase = null;
+  showView('viewList');
+  loadCaseList();
+}
+
+// ═══ 精靈渲染引擎 ═══════════════════════════════════════
+function renderWizard() {
+  const c = currentCase;
+  const d = c.data_json || {};
+  const stage = c.stage;
+  const isClosed = ['已結案', '不受理結案'].includes(c.status);
+
+  // 標題
+  document.getElementById('wizardTitle').textContent =
+    c.case_id ? (c.case_name || '案件 #' + c.case_id) : '新增案件';
+
+  // 步驟條
+  renderProgress(stage);
+
+  // 期限
+  if (c.case_id) loadDeadlines(c.case_id);
+  else document.getElementById('deadlinePanel').style.display = 'none';
+
+  // 表單
+  const area = document.getElementById('wizardFormArea');
+  const btns = document.getElementById('wizardButtons');
+
+  if (isClosed) {
+    area.innerHTML = renderClosedView(c, d);
+    btns.innerHTML = `<button class="btn btn-secondary" onclick="backToList()">← 返回列表</button>`;
+    return;
+  }
+
+  switch (stage) {
+    case 'PRE_STAGE': renderPreStage(area, btns, c, d); break;
+    case 'STAGE_01':  renderStage01(area, btns, c, d); break;
+    case 'STAGE_02':  renderStage02(area, btns, c, d); break;
+    case 'STAGE_03':  renderStage03(area, btns, c, d); break;
+    case 'STAGE_04':  renderStage04(area, btns, c, d); break;
+    case 'STAGE_05':  renderStage05(area, btns, c, d); break;
+    case 'STAGE_06':  renderStage06(area, btns, c, d); break;
+    default:
+      area.innerHTML = `<div class="panel"><p>未知階段：${esc(stage)}</p></div>`;
+      btns.innerHTML = '';
+  }
+}
+
+// ── 步驟條渲染 ───────────────────────────────────────────
+function renderProgress(currentStage) {
+  const el = document.getElementById('wizardProgress');
+  const idx = STAGES.findIndex(s => s.id === currentStage);
+  el.innerHTML = STAGES.map((s, i) => {
+    let dotClass = 'step-dot';
+    if (i < idx) dotClass += ' done';
+    else if (i === idx) dotClass += ' current';
+    const connector = i < STAGES.length - 1
+      ? `<div class="step-connector ${i < idx ? 'done' : ''}"></div>`
+      : '';
+    return `<div class="${dotClass}" title="${s.label}">${s.num}</div>${connector}`;
+  }).join('');
+}
+
+// ── PRE_STAGE：收件基本資料 ──────────────────────────────
+function renderPreStage(area, btns, c, d) {
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">收件 — 基本資料</h3>
+      <p class="panel-desc">填寫案件基本資訊後儲存，即可進入受理決定階段。</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>案件名稱 <span class="required">*</span></label>
+          <input type="text" id="f_case_name" value="${esc(c.case_name)}" placeholder="如：112學年第X案">
+        </div>
+        <div class="form-group">
+          <label>學校名稱 <span class="required">*</span></label>
+          <input type="text" id="f_school" value="${esc(c.school)}" placeholder="如：臺北市內湖區內湖國小">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>事件類型 <span class="required">*</span></label>
+          <select id="f_case_type">
+            <option value="">請選擇</option>
+            <option value="SEXUAL_HARASSMENT" ${c.case_type==='SEXUAL_HARASSMENT'?'selected':''}>性騷擾</option>
+            <option value="SEXUAL_BULLYING" ${c.case_type==='SEXUAL_BULLYING'?'selected':''}>性霸凌</option>
+            <option value="SEXUAL_ASSAULT" ${c.case_type==='SEXUAL_ASSAULT'?'selected':''}>性侵害</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>申請來源</label>
+          <select id="f_complaint_type">
+            <option value="">請選擇</option>
+            <option value="申請" ${d.complaint_type==='申請'?'selected':''}>申請調查</option>
+            <option value="檢舉" ${d.complaint_type==='檢舉'?'selected':''}>檢舉</option>
+            <option value="通報" ${d.complaint_type==='通報'?'selected':''}>通報</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>接獲申請日期 <span class="required">*</span></label>
+        <input type="date" id="f_received_date" value="${d.received_date || ''}">
+        <div class="hint">此日期為 HANDOVER（3日）及 ACCEPT_NOTIFY（20日）期限的起算點</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>申請人/檢舉人姓名</label>
+          <input type="text" id="f_complainant_name" value="${esc(d.complainant_name)}" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>被害人姓名</label>
+          <input type="text" id="f_victim_name" value="${esc(d.victim_name)}" placeholder="">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>行為人姓名</label>
+          <input type="text" id="f_respondent_name" value="${esc(d.respondent_name)}" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>行為人身分 <span class="required">*</span></label>
+          <select id="f_respondent_role">
+            <option value="">請選擇</option>
+            <option value="PRINCIPAL" ${d.respondent_role==='PRINCIPAL'?'selected':''}>校長</option>
+            <option value="TEACHER" ${d.respondent_role==='TEACHER'?'selected':''}>教師</option>
+            <option value="STAFF" ${d.respondent_role==='STAFF'?'selected':''}>職員/工友</option>
+            <option value="STUDENT" ${d.respondent_role==='STUDENT'?'selected':''}>學生</option>
+          </select>
+          <div class="hint">若行為人為校長/教師/職員/工友，調查小組須全部外聘</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>事件摘要</label>
+        <textarea id="f_incident_summary" placeholder="簡述事件經過">${esc(d.incident_summary)}</textarea>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="f_is_cross_school" ${c.is_cross_school ? 'checked' : ''}>
+        <label for="f_is_cross_school">跨校事件</label>
+      </div>
+    </div>`;
+
+  btns.innerHTML = `
+    <button class="btn btn-primary" onclick="savePreStage()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvancePreStage()">儲存並推進 →</button>
+    ${c.case_id ? `<button class="btn btn-danger btn-sm" onclick="deleteCase()">🗑 刪除案件</button>` : ''}
+  `;
+}
+
+async function savePreStage() {
+  const data = collectPreStageData();
+  if (!data) return;
+  await saveCase(data);
+}
+
+async function saveAndAdvancePreStage() {
+  const data = collectPreStageData();
+  if (!data) return;
+  const saved = await saveCase(data);
+  if (saved) await advanceStage();
+}
+
+function collectPreStageData() {
+  const case_name = val('f_case_name');
+  const school = val('f_school');
+  const case_type = val('f_case_type');
+  const received_date = val('f_received_date');
+  const respondent_role = val('f_respondent_role');
+
+  if (!case_name || !school || !case_type || !received_date || !respondent_role) {
+    toast('請填寫所有必填欄位', 'warn');
+    return null;
+  }
+
+  return {
+    case_name,
+    school,
+    case_type,
+    is_cross_school: document.getElementById('f_is_cross_school').checked,
+    data_json: {
+      ...currentCase.data_json,
+      received_date,
+      complaint_type: val('f_complaint_type'),
+      complainant_name: val('f_complainant_name'),
+      victim_name: val('f_victim_name'),
+      respondent_name: val('f_respondent_name'),
+      respondent_role,
+      incident_summary: val('f_incident_summary'),
+    },
+  };
+}
+
+// ── STAGE_01：受理決定 ───────────────────────────────────
+function renderStage01(area, btns, c, d) {
+  const needsTransfer = d.respondent_role === 'PRINCIPAL';
+
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段一 — 受理決定</h3>
+      <p class="panel-desc">
+        接獲申請日起 <strong>3日內</strong> 將事件交由性平會處理（HANDOVER），
+        <strong>20日內</strong> 性平會須議決受理或不受理（ACCEPT_NOTIFY）。
+      </p>
+
+      ${needsTransfer ? `
+        <div class="alert alert-danger">
+          <span class="alert-icon">⚠</span>
+          <div>
+            <strong>行為人為校長</strong>：本校無管轄權，應於 <strong>7工作日內</strong> 移送主管機關（教育局）處理。
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ</span>
+        <div>
+          <strong>關鍵順序：</strong>接獲申請 → 3日內行政交辦性平會（HANDOVER）→ 20日內性平會議決受理（ACCEPT_NOTIFY）→ 受理後2個月調查（起算點為受理日）
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>處理決定 <span class="required">*</span></label>
+        <select id="f_accept_decision" onchange="onAcceptDecisionChange()">
+          <option value="">請選擇</option>
+          <option value="受理" ${d.accept_decision==='受理'?'selected':''}>受理調查</option>
+          <option value="不受理" ${d.accept_decision==='不受理'?'selected':''}>不受理</option>
+          ${needsTransfer ? `<option value="移送" ${d.accept_decision==='移送'?'selected':''}>移送主管機關</option>` : ''}
+          <option value="顧問諮詢" ${d.accept_decision==='顧問諮詢'?'selected':''}>顧問諮詢（暫不啟動）</option>
+        </select>
+      </div>
+
+      <div id="acceptFields">
+        <div class="form-group" id="fgAcceptDate" style="display:none">
+          <label>受理日期</label>
+          <input type="date" id="f_accept_date" value="${d.accept_date || ''}">
+          <div class="hint">此日期為調查期限（2個月）的起算點</div>
+        </div>
+        <div class="form-group" id="fgRejectReason" style="display:none">
+          <label>不受理理由 <span class="required">*</span></label>
+          <textarea id="f_reject_reason" placeholder="依法須書面敘明理由">${esc(d.reject_reason)}</textarea>
+        </div>
+      </div>
+    </div>`;
+
+  onAcceptDecisionChange();
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage01()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvanceStage01()">儲存並推進 →</button>
+  `;
+}
+
+function onAcceptDecisionChange() {
+  const v = val('f_accept_decision');
+  const dateEl = document.getElementById('fgAcceptDate');
+  const rejectEl = document.getElementById('fgRejectReason');
+  if (dateEl) dateEl.style.display = v === '受理' ? '' : 'none';
+  if (rejectEl) rejectEl.style.display = v === '不受理' ? '' : 'none';
+}
+
+function collectStage01Data() {
+  const decision = val('f_accept_decision');
+  if (!decision) { toast('請選擇處理決定', 'warn'); return null; }
+  if (decision === '不受理' && !val('f_reject_reason')) {
+    toast('不受理必須敘明理由', 'warn'); return null;
+  }
+  if (decision === '受理' && !val('f_accept_date')) {
+    toast('請填寫受理日期', 'warn'); return null;
+  }
+  const data_json = {
+    ...currentCase.data_json,
+    accept_decision: decision,
+    accept_date: val('f_accept_date') || '',
+    reject_reason: val('f_reject_reason') || '',
+  };
+  let status = currentCase.status;
+  let new_status = undefined;
+  if (decision === '不受理') new_status = '不受理結案';
+  else if (decision === '移送') new_status = '移送結案';
+  else if (decision === '顧問諮詢') new_status = '顧問諮詢中';
+
+  return { data_json, new_status };
+}
+
+async function saveStage01() {
+  const d = collectStage01Data();
+  if (!d) return;
+  await saveCase({ data_json: d.data_json });
+}
+
+async function saveAndAdvanceStage01() {
+  const d = collectStage01Data();
+  if (!d) return;
+  await saveCase({ data_json: d.data_json });
+
+  if (d.new_status === '不受理結案' || d.new_status === '移送結案') {
+    // 特殊結案：直接推到 CLOSED
+    await advanceStage({ new_status: d.new_status });
+  } else if (d.new_status === '顧問諮詢中') {
+    await saveCase({ status: d.new_status });
+    toast('已標記為顧問諮詢中，等正式申請後再推進', 'ok');
+    renderWizard();
+  } else {
+    // 受理：正常推進
+    await advanceStage();
+  }
+}
+
+// ── STAGE_02：組成調查小組 ───────────────────────────────
+function renderStage02(area, btns, c, d) {
+  const needsFullExternal = ['PRINCIPAL','TEACHER','STAFF'].includes(d.respondent_role);
+  const members = d.panel_members || [];
+
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段二 — 組成調查小組</h3>
+      <p class="panel-desc">
+        調查小組 3人以上，女性 ≥ 1/2，外聘 ≥ 1/3。
+        ${needsFullExternal ? '<strong style="color:var(--danger);">本案行為人為校長/教師/職員，須全部外聘。</strong>' : ''}
+      </p>
+
+      ${needsFullExternal ? `
+        <div class="alert alert-danger">
+          <span class="alert-icon">⚠</span>
+          <div>調查小組成員應 <strong>全部外聘</strong>（行為人為${RESPONDENT_ROLE_MAP[d.respondent_role] || '教職員'}）</div>
+        </div>
+      ` : `
+        <div class="alert alert-info">
+          <span class="alert-icon">ℹ</span>
+          <div>一般案件：3人以上，女性 ≥ 1/2，外聘 ≥ 1/3</div>
+        </div>
+      `}
+
+      <div class="form-group">
+        <label>調查小組組成日期</label>
+        <input type="date" id="f_panel_formed_date" value="${d.panel_formed_date || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>調查小組成員（每行一位：姓名/性別/內聘或外聘）</label>
+        <textarea id="f_panel_members" placeholder="張OO/女/外聘\n李OO/女/外聘\n王OO/男/外聘" style="min-height:120px;">${members.join ? members.join('\n') : esc(members)}</textarea>
+        <div class="hint">例：張OO/女/外聘</div>
+      </div>
+    </div>`;
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage02()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvanceStage02()">儲存並推進 →</button>
+  `;
+}
+
+async function saveStage02() {
+  const data_json = {
+    ...currentCase.data_json,
+    panel_formed_date: val('f_panel_formed_date'),
+    panel_members: val('f_panel_members').split('\n').filter(Boolean),
+  };
+  await saveCase({ data_json });
+}
+
+async function saveAndAdvanceStage02() {
+  await saveStage02();
+  await advanceStage();
+}
+
+// ── STAGE_03：調查進行 ───────────────────────────────────
+function renderStage03(area, btns, c, d) {
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段三 — 調查進行</h3>
+      <p class="panel-desc">
+        受理申請日起 <strong>2個月內</strong> 完成調查報告。可延長最多 <strong>2次</strong>，每次不超過 1個月，且須通知當事人。
+      </p>
+
+      <div class="form-group">
+        <label>已延長次數（最多2次）</label>
+        <select id="f_extension_count">
+          <option value="0" ${(d.extension_count||0)==0?'selected':''}>0 次</option>
+          <option value="1" ${(d.extension_count||0)==1?'selected':''}>1 次</option>
+          <option value="2" ${(d.extension_count||0)==2?'selected':''}>2 次</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>延長說明</label>
+        <textarea id="f_extension_notes" placeholder="每次延長的理由與通知紀錄">${(d.extension_notes || []).join('\n')}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>調查報告完成日期</label>
+        <input type="date" id="f_report_complete_date" value="${d.report_complete_date || ''}">
+        <div class="hint">此日期為 COMMITTEE_DECISION（2個月）期限的起算點</div>
+      </div>
+    </div>`;
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage03()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvanceStage03()">儲存並推進 →</button>
+  `;
+}
+
+async function saveStage03() {
+  const data_json = {
+    ...currentCase.data_json,
+    extension_count: parseInt(val('f_extension_count')) || 0,
+    extension_notes: val('f_extension_notes').split('\n').filter(Boolean),
+    report_complete_date: val('f_report_complete_date'),
+  };
+  await saveCase({ data_json });
+}
+
+async function saveAndAdvanceStage03() {
+  if (!val('f_report_complete_date')) {
+    toast('請填寫調查報告完成日期再推進', 'warn'); return;
+  }
+  await saveStage03();
+  await advanceStage();
+}
+
+// ── STAGE_04：性平會議決 ─────────────────────────────────
+function renderStage04(area, btns, c, d) {
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段四 — 性平會議決</h3>
+      <p class="panel-desc">
+        接獲調查報告日起 <strong>2個月內</strong> 性平會完成議決並通知當事人。
+        <span style="color:var(--warn);">（⚠️ 可否延長待法規確認）</span>
+      </p>
+
+      <div class="form-group">
+        <label>議決日期</label>
+        <input type="date" id="f_committee_date" value="${d.committee_date || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>議決結果</label>
+        <select id="f_committee_result">
+          <option value="">請選擇</option>
+          <option value="成立" ${d.committee_result==='成立'?'selected':''}>性別事件成立</option>
+          <option value="不成立" ${d.committee_result==='不成立'?'selected':''}>性別事件不成立</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>通知當事人日期</label>
+        <input type="date" id="f_notice_date" value="${d.notice_date || ''}">
+        <div class="hint">此日期的次日為申復期限（30日）的起算點</div>
+      </div>
+
+      <div class="form-group">
+        <label>處理建議摘要</label>
+        <textarea id="f_committee_notes" placeholder="議決內容與處理建議">${esc(d.committee_notes)}</textarea>
+      </div>
+    </div>`;
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage04()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvanceStage04()">儲存並推進 →</button>
+  `;
+}
+
+async function saveStage04() {
+  const data_json = {
+    ...currentCase.data_json,
+    committee_date: val('f_committee_date'),
+    committee_result: val('f_committee_result'),
+    notice_date: val('f_notice_date'),
+    committee_notes: val('f_committee_notes'),
+  };
+  await saveCase({ data_json });
+}
+
+async function saveAndAdvanceStage04() {
+  await saveStage04();
+  await advanceStage();
+}
+
+// ── STAGE_05：申復 ───────────────────────────────────────
+function renderStage05(area, btns, c, d) {
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段五 — 申復</h3>
+      <p class="panel-desc">
+        當事人收到通知次日起 <strong>30日內</strong> 可提出申復。
+      </p>
+
+      <div class="form-group">
+        <label>申復狀態</label>
+        <select id="f_appeal_status">
+          <option value="">請選擇</option>
+          <option value="未提出" ${d.appeal_status==='未提出'?'selected':''}>未提出申復（逾期未申復）</option>
+          <option value="已提出" ${d.appeal_status==='已提出'?'selected':''}>已提出申復</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="fgAppealDate" style="display:none">
+        <label>申復提出日期</label>
+        <input type="date" id="f_appeal_date" value="${d.appeal_date || ''}">
+      </div>
+
+      <div class="form-group" id="fgAppealContent" style="display:none">
+        <label>申復內容摘要</label>
+        <textarea id="f_appeal_content" placeholder="申復理由與訴求">${esc(d.appeal_content)}</textarea>
+      </div>
+    </div>`;
+
+  // 動態顯示
+  const sel = document.getElementById('f_appeal_status');
+  sel.addEventListener('change', () => {
+    const show = sel.value === '已提出';
+    document.getElementById('fgAppealDate').style.display = show ? '' : 'none';
+    document.getElementById('fgAppealContent').style.display = show ? '' : 'none';
+  });
+  sel.dispatchEvent(new Event('change'));
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage05()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndAdvanceStage05()">儲存並推進至主管審議 →</button>
+    <button class="btn btn-danger" onclick="closeFromStage05()">直接結案（未申復）</button>
+  `;
+}
+
+async function saveStage05() {
+  const data_json = {
+    ...currentCase.data_json,
+    appeal_status: val('f_appeal_status'),
+    appeal_date: val('f_appeal_date'),
+    appeal_content: val('f_appeal_content'),
+  };
+  await saveCase({ data_json });
+}
+
+async function saveAndAdvanceStage05() {
+  if (val('f_appeal_status') !== '已提出') {
+    toast('請確認申復狀態為「已提出」再推進', 'warn'); return;
+  }
+  await saveStage05();
+  await advanceStage();
+}
+
+async function closeFromStage05() {
+  if (!confirm('確定直接結案？申復期限已過且當事人未提出申復。')) return;
+  const data_json = { ...currentCase.data_json, appeal_status: '未提出' };
+  await saveCase({ data_json, status: '已結案' });
+  // 推到 CLOSED
+  await api('gender_advance_stage', { case_id: currentCase.case_id, new_status: '已結案' });
+  // 再推一次到 CLOSED（STAGE_05 → STAGE_06 → CLOSED）— 或直接多推
+  // 簡化：直接 save stage=CLOSED
+  await saveCase({ stage: 'CLOSED', status: '已結案' });
+  toast('案件已結案', 'ok');
+  backToList();
+}
+
+// ── STAGE_06：主管機關審議 ───────────────────────────────
+function renderStage06(area, btns, c, d) {
+  area.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">階段六 — 主管機關審議</h3>
+      <p class="panel-desc">
+        主管機關收件日起 <strong>30日內</strong> 完成審議。
+        <span style="color:var(--warn);">（⚠️ 可否延長待法規確認）</span>
+      </p>
+
+      <div class="form-group">
+        <label>主管機關收件日期</label>
+        <input type="date" id="f_authority_received_date" value="${d.authority_received_date || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>審議結果</label>
+        <select id="f_authority_result">
+          <option value="">請選擇</option>
+          <option value="維持" ${d.authority_result==='維持'?'selected':''}>維持原決定</option>
+          <option value="撤銷" ${d.authority_result==='撤銷'?'selected':''}>撤銷原決定（重新調查）</option>
+          <option value="變更" ${d.authority_result==='變更'?'selected':''}>變更處理措施</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>審議說明</label>
+        <textarea id="f_authority_notes" placeholder="審議結果與後續處理">${esc(d.authority_notes)}</textarea>
+      </div>
+    </div>`;
+
+  btns.innerHTML = `
+    <button class="btn btn-secondary" onclick="rollbackStage()">← 回上一步</button>
+    <button class="btn btn-primary" onclick="saveStage06()">💾 儲存</button>
+    <button class="btn btn-ok" onclick="saveAndCloseStage06()">儲存並結案 ✓</button>
+  `;
+}
+
+async function saveStage06() {
+  const data_json = {
+    ...currentCase.data_json,
+    authority_received_date: val('f_authority_received_date'),
+    authority_result: val('f_authority_result'),
+    authority_notes: val('f_authority_notes'),
+  };
+  await saveCase({ data_json });
+}
+
+async function saveAndCloseStage06() {
+  await saveStage06();
+  await advanceStage({ new_status: '已結案' });
+}
+
+// ── 結案畫面 ─────────────────────────────────────────────
+function renderClosedView(c, d) {
+  const typeLabel = CASE_TYPE_MAP[c.case_type] || c.case_type;
+  return `
+    <div class="panel">
+      <div class="alert alert-ok">
+        <span class="alert-icon">✓</span>
+        <div><strong>本案已結案</strong>（${esc(c.status)}）</div>
+      </div>
+      <h3 class="panel-title">${esc(c.case_name)}</h3>
+      <table style="width:100%;font-size:0.88rem;border-collapse:collapse;margin-top:12px;">
+        <tr><td style="padding:6px 12px 6px 0;color:#888;width:100px;">事件類型</td><td>${typeLabel}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">學校</td><td>${esc(c.school)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">接獲日期</td><td>${d.received_date || '-'}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">受理日期</td><td>${d.accept_date || '-'}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">行為人</td><td>${esc(d.respondent_name)} (${RESPONDENT_ROLE_MAP[d.respondent_role]||'-'})</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">議決結果</td><td>${d.committee_result || '-'}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#888;">結案狀態</td><td>${esc(c.status)}</td></tr>
+      </table>
+    </div>`;
+}
+
+// ═══ 共用操作 ═══════════════════════════════════════════
+
+// 儲存案件
+async function saveCase(updates) {
+  const c = currentCase;
+  const params = {
+    case_id: c.case_id || undefined,
+    case_name: updates.case_name !== undefined ? updates.case_name : c.case_name,
+    school: updates.school !== undefined ? updates.school : c.school,
+    case_type: updates.case_type !== undefined ? updates.case_type : c.case_type,
+    stage: updates.stage !== undefined ? updates.stage : c.stage,
+    status: updates.status !== undefined ? updates.status : c.status,
+    is_cross_school: updates.is_cross_school !== undefined ? updates.is_cross_school : c.is_cross_school,
+    data_json: updates.data_json !== undefined ? updates.data_json : c.data_json,
+  };
+
+  try {
+    const res = await api('gender_save', params);
+    if (res.ok) {
+      if (res.case_id) currentCase.case_id = res.case_id;
+      // 更新 local state
+      Object.assign(currentCase, params);
+      if (updates.data_json) currentCase.data_json = updates.data_json;
+      toast('儲存成功', 'ok');
+
+      // 計算並儲存期限
+      await saveDeadlines();
+      return true;
+    } else {
+      toast('儲存失敗：' + res.error, 'error');
+      return false;
+    }
+  } catch (e) {
+    if (e.message !== 'TOKEN_EXPIRED') toast('網路錯誤', 'error');
+    return false;
+  }
+}
+
+// 推進階段
+async function advanceStage(extraParams = {}) {
+  if (!currentCase.case_id) { toast('請先儲存案件', 'warn'); return; }
+  try {
+    const res = await api('gender_advance_stage', {
+      case_id: currentCase.case_id,
+      ...extraParams,
+    });
+
+    if (res.ok) {
+      currentCase.stage = res.to_stage;
+      if (extraParams.new_status) currentCase.status = extraParams.new_status;
+      toast(`已推進至 ${(STAGES.find(s=>s.id===res.to_stage)||{}).label || res.to_stage}`, 'ok');
+      renderWizard();
+    } else if (res.error === 'NEED_FULL_EXTERNAL_CONFIRM') {
+      // 顯示外聘確認 modal
+      openModal('modalFullExternal');
+      document.getElementById('confirmFullExternal').checked = false;
+      document.getElementById('btnConfirmExternal').disabled = true;
+      document.getElementById('confirmFullExternal').onchange = function() {
+        document.getElementById('btnConfirmExternal').disabled = !this.checked;
+      };
+    } else if (res.error === 'CASE_IS_CLOSED') {
+      toast('案件已結案，無法推進', 'warn');
+    } else {
+      toast('推進失敗：' + res.error, 'error');
+    }
+  } catch (e) {
+    if (e.message !== 'TOKEN_EXPIRED') toast('推進失敗', 'error');
+  }
+}
+
+// 外聘確認後推進
+async function confirmFullExternal() {
+  closeModal('modalFullExternal');
+  try {
+    const res = await api('gender_advance_stage', {
+      case_id: currentCase.case_id,
+      confirm_full_external: true,
+    });
+    if (res.ok) {
+      currentCase.stage = res.to_stage;
+      currentCase.data_json.is_full_external = true;
+      toast('已確認全部外聘，推進至組調查組', 'ok');
+      renderWizard();
+    } else {
+      toast('推進失敗：' + res.error, 'error');
+    }
+  } catch (e) {
+    toast('網路錯誤', 'error');
+  }
+}
+
+// 回退階段
+async function rollbackStage() {
+  if (!currentCase.case_id) { toast('請先儲存案件', 'warn'); return; }
+  if (!confirm('確定要回到上一步？')) return;
+  try {
+    const res = await api('gender_rollback_stage', { case_id: currentCase.case_id });
+    if (res.ok) {
+      currentCase.stage = res.to_stage;
+      toast(`已回退至 ${(STAGES.find(s=>s.id===res.to_stage)||{}).label || res.to_stage}`, 'ok');
+      renderWizard();
+    } else {
+      toast('回退失敗：' + res.error, 'error');
+    }
+  } catch (e) {
+    if (e.message !== 'TOKEN_EXPIRED') toast('網路錯誤', 'error');
+  }
+}
+
+// 刪除案件
+async function deleteCase() {
+  if (!currentCase.case_id) return;
+  if (!confirm('確定要刪除此案件？此操作無法復原。')) return;
+  try {
+    const res = await api('gender_delete', { case_id: currentCase.case_id });
+    if (res.ok) {
+      toast('案件已刪除', 'ok');
+      backToList();
+    } else {
+      toast('刪除失敗：' + res.error, 'error');
+    }
+  } catch (e) {
+    toast('網路錯誤', 'error');
+  }
+}
+
+// ── 期限計算與儲存 ───────────────────────────────────────
+async function saveDeadlines() {
+  if (!currentCase.case_id) return;
+  const d = currentCase.data_json || {};
+  const deadlines = [];
+
+  // HANDOVER：接獲申請日 +3 日曆日
+  if (d.received_date) {
+    deadlines.push({
+      milestone: 'HANDOVER',
+      start_date: d.received_date,
+      deadline_type: 'CALENDAR_DAYS',
+      deadline_value: 3,
+      due_date: addDays(d.received_date, 3),
+      extension_count: 0,
+      note: '交由性平會（3日）',
+    });
+  }
+
+  // ACCEPT_NOTIFY：接獲申請日 +20 日曆日
+  if (d.received_date) {
+    deadlines.push({
+      milestone: 'ACCEPT_NOTIFY',
+      start_date: d.received_date,
+      deadline_type: 'CALENDAR_DAYS',
+      deadline_value: 20,
+      due_date: addDays(d.received_date, 20),
+      extension_count: 0,
+      note: '受理/不受理通知（20日）',
+    });
+  }
+
+  // INVESTIGATION_COMPLETE：受理日 +2 個月
+  if (d.accept_date) {
+    const ext = d.extension_count || 0;
+    deadlines.push({
+      milestone: 'INVESTIGATION_COMPLETE',
+      start_date: d.accept_date,
+      deadline_type: 'MONTHS',
+      deadline_value: 2 + ext,
+      due_date: addMonths(d.accept_date, 2 + ext),
+      extension_count: ext,
+      note: `調查完成（2月${ext > 0 ? '+延長'+ext+'月' : ''}）`,
+    });
+  }
+
+  // COMMITTEE_DECISION：接獲調查報告日 +2 個月
+  if (d.report_complete_date) {
+    deadlines.push({
+      milestone: 'COMMITTEE_DECISION',
+      start_date: d.report_complete_date,
+      deadline_type: 'MONTHS',
+      deadline_value: 2,
+      due_date: addMonths(d.report_complete_date, 2),
+      extension_count: 0,
+      note: '性平會議決（2月）',
+    });
+  }
+
+  // APPEAL_DEADLINE：通知次日 +30 日曆日
+  if (d.notice_date) {
+    const startDay = addDays(d.notice_date, 1);
+    deadlines.push({
+      milestone: 'APPEAL_DEADLINE',
+      start_date: startDay,
+      deadline_type: 'CALENDAR_DAYS',
+      deadline_value: 30,
+      due_date: addDays(startDay, 30),
+      extension_count: 0,
+      note: '申復截止（30日）',
+    });
+  }
+
+  // APPEAL_DECISION：主管機關收件日 +30 日曆日
+  if (d.authority_received_date) {
+    deadlines.push({
+      milestone: 'APPEAL_DECISION',
+      start_date: d.authority_received_date,
+      deadline_type: 'CALENDAR_DAYS',
+      deadline_value: 30,
+      due_date: addDays(d.authority_received_date, 30),
+      extension_count: 0,
+      note: '主管審議（30日）',
+    });
+  }
+
+  if (deadlines.length > 0) {
+    await api('gender_save_with_deadlines', {
+      case_id: currentCase.case_id,
+      deadlines,
+    });
+  }
+}
+
+// ── 期限顯示 ─────────────────────────────────────────────
+async function loadDeadlines(caseId) {
+  try {
+    const res = await api('gender_deadline_list', { case_id: caseId });
+    if (res.ok && res.deadlines && res.deadlines.length > 0) {
+      document.getElementById('deadlinePanel').style.display = '';
+      renderDeadlines(res.deadlines);
+    } else {
+      document.getElementById('deadlinePanel').style.display = 'none';
+    }
+  } catch (e) {
+    document.getElementById('deadlinePanel').style.display = 'none';
+  }
+}
+
+function renderDeadlines(deadlines) {
+  const el = document.getElementById('deadlineList');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  el.innerHTML = deadlines.map(dl => {
+    const due = new Date(dl.due_date);
+    due.setHours(0,0,0,0);
+    const diff = Math.ceil((due - today) / 86400000);
+    let statusClass = 'safe';
+    let remainText = `剩 ${diff} 天`;
+    if (diff < 0) { statusClass = 'overdue'; remainText = `已逾期 ${Math.abs(diff)} 天`; }
+    else if (diff <= 3) { statusClass = 'warning'; }
+    else if (diff <= 7) { statusClass = 'warning'; }
+
+    return `
+      <div class="deadline-card ${statusClass}">
+        <div>
+          <div class="deadline-label">${esc(dl.note || dl.milestone)}</div>
+          <div class="deadline-dates">起算：${dl.start_date} → 截止：${dl.due_date}</div>
+        </div>
+        <span class="deadline-remaining ${statusClass}">${remainText}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── 日期計算工具 ─────────────────────────────────────────
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return formatDateISO(d);
+}
+
+function addMonths(dateStr, months) {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + months);
+  return formatDateISO(d);
+}
+
+function formatDateISO(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  try {
+    const d = new Date(str);
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  } catch { return str; }
+}
+
+// ── UI 工具 ──────────────────────────────────────────────
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function toast(msg, type = 'ok') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; }, 2500);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+</script>
+</body>
+</html>
