@@ -612,6 +612,60 @@ const RESPONDENT_ROLE_MAP = {
   STUDENT:   '學生',
 };
 
+// ── 新竹市教育處範本對應（學管科賴慧文老師提供）─────────
+const CITY_TEMPLATES = {
+  T1: { id: 'T1', stage: 'STAGE_01', name: '範本一', desc: '公益事件版本（學校主動調查）' },
+  T2: { id: 'T2', stage: 'STAGE_01', name: '範本二', desc: '家長暫無意願調查且未涉刑法227（不啟動調查）' },
+  T3: { id: 'T3', stage: 'STAGE_01', name: '範本三', desc: '涉刑法227事件版本（強制性交/猥褻）' },
+  T4: { id: 'T4', stage: 'STAGE_01', name: '範本四', desc: '一般受理會議（標準程序）' },
+  T5: { id: 'T5', stage: 'STAGE_04', name: '範本五', desc: '調查報告審議會議（標準議決）' },
+  T6: { id: 'T6', stage: 'STAGE_04', name: '範本六', desc: '行為人具兩種以上身份或非管轄學校（跨校/多重身份）' },
+  T7: { id: 'T7', stage: 'STAGE_06', name: '範本七', desc: '結案會議紀錄（完備程序歸檔）' },
+};
+
+function getStage01Hints(decision, caseData) {
+  const hints = [];
+  if (decision === '受理') {
+    hints.push({ tpl: CITY_TEMPLATES.T4, primary: true, note: '標準受理會議紀錄' });
+    hints.push({ tpl: CITY_TEMPLATES.T1, primary: false, note: '若屬學校主動調查（公益事件）' });
+    if (caseData.is_227) {
+      hints.push({ tpl: CITY_TEMPLATES.T3, primary: true, note: '本案涉刑法227，請優先使用' });
+    } else {
+      hints.push({ tpl: CITY_TEMPLATES.T3, primary: false, note: '若涉及刑法227條' });
+    }
+  } else if (decision === '不受理') {
+    hints.push({ tpl: CITY_TEMPLATES.T2, primary: true, note: '家長無意願且未涉227之不受理程序' });
+  }
+  return hints;
+}
+
+function getStage04Hints(isCrossSchool) {
+  const hints = [];
+  if (isCrossSchool) {
+    hints.push({ tpl: CITY_TEMPLATES.T6, primary: true, note: '跨校或行為人多重身份案件' });
+  }
+  hints.push({ tpl: CITY_TEMPLATES.T5, primary: !isCrossSchool, note: '標準調查報告審議會議' });
+  return hints;
+}
+
+function renderTemplateHints(hints) {
+  if (!hints || hints.length === 0) return '';
+  const items = hints.map(h => {
+    const icon = h.primary ? '📋' : '📄';
+    const cls = h.primary ? 'alert-warn' : 'alert-info';
+    return `<div class="alert ${cls}" style="padding:10px 14px;margin-bottom:8px;">
+      <span class="alert-icon">${icon}</span>
+      <div><strong>${h.tpl.name}：${h.tpl.desc}</strong><br><span style="font-size:0.82rem;opacity:0.8;">${h.note}</span></div>
+    </div>`;
+  }).join('');
+  return `<div class="template-hints" style="margin-bottom:18px;">
+    <div style="font-size:0.82rem;font-weight:500;color:var(--info);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+      <span style="font-size:1rem;">📁</span> 新竹市教育處實務範本指南
+    </div>
+    ${items}
+  </div>`;
+}
+
 // ── 全域狀態 ─────────────────────────────────────────────
 let currentUser = null;   // { email, name, picture, token }
 let currentCase = null;   // 目前編輯的案件完整資料
@@ -979,8 +1033,8 @@ function renderStage01(area, btns, c, d) {
     <div class="panel">
       <h3 class="panel-title">階段一 — 受理決定</h3>
       <p class="panel-desc">
-        接獲申請日起 <strong>3日內</strong> 將事件交由性平會處理，
-        <strong>20日內</strong> 性平會須議決受理或不受理。
+        接獲申請日起 <strong>3日內</strong> 將事件交由性平會處理（HANDOVER），
+        <strong>20日內</strong> 性平會須議決受理或不受理（ACCEPT_NOTIFY）。
       </p>
 
       ${needsTransfer ? `
@@ -995,7 +1049,7 @@ function renderStage01(area, btns, c, d) {
       <div class="alert alert-info">
         <span class="alert-icon">ℹ</span>
         <div>
-          <strong>關鍵順序：</strong>接獲申請 → 3日內行政交辦性平會→ 20日內性平會議決受理→ 受理後2個月調查（起算點為受理日）
+          <strong>關鍵順序：</strong>接獲申請 → 3日內行政交辦性平會（HANDOVER）→ 20日內性平會議決受理（ACCEPT_NOTIFY）→ 受理後2個月調查（起算點為受理日）
         </div>
       </div>
 
@@ -1009,6 +1063,13 @@ function renderStage01(area, btns, c, d) {
           <option value="顧問諮詢" ${d.accept_decision==='顧問諮詢'?'selected':''}>顧問諮詢（暫不啟動）</option>
         </select>
       </div>
+
+      <div class="checkbox-group" style="margin-bottom:14px;">
+        <input type="checkbox" id="f_is_227" ${d.is_227 ? 'checked' : ''} onchange="onAcceptDecisionChange()">
+        <label for="f_is_227" style="font-size:0.88rem;">本案涉及刑法第227條（對未滿16歲性交/猥褻）</label>
+      </div>
+
+      <div id="templateHintArea01"></div>
 
       <div id="acceptFields">
         <div class="form-group" id="fgAcceptDate" style="display:none">
@@ -1038,6 +1099,16 @@ function onAcceptDecisionChange() {
   const rejectEl = document.getElementById('fgRejectReason');
   if (dateEl) dateEl.style.display = v === '受理' ? '' : 'none';
   if (rejectEl) rejectEl.style.display = v === '不受理' ? '' : 'none';
+
+  // 範本提示
+  const hintArea = document.getElementById('templateHintArea01');
+  if (hintArea && v) {
+    const is227 = document.getElementById('f_is_227') && document.getElementById('f_is_227').checked;
+    const hints = getStage01Hints(v, { is_227: is227 });
+    hintArea.innerHTML = renderTemplateHints(hints);
+  } else if (hintArea) {
+    hintArea.innerHTML = '';
+  }
 }
 
 function collectStage01Data() {
@@ -1054,6 +1125,7 @@ function collectStage01Data() {
     accept_decision: decision,
     accept_date: val('f_accept_date') || '',
     reject_reason: val('f_reject_reason') || '',
+    is_227: document.getElementById('f_is_227') ? document.getElementById('f_is_227').checked : false,
   };
   let status = currentCase.status;
   let new_status = undefined;
@@ -1121,7 +1193,7 @@ function renderStage02(area, btns, c, d) {
       <div class="form-group">
         <label>調查小組成員（每行一位：姓名/性別/內聘或外聘）</label>
         <textarea id="f_panel_members" placeholder="張OO/女/外聘\n李OO/女/外聘\n王OO/男/外聘" style="min-height:120px;">${members.join ? members.join('\n') : esc(members)}</textarea>
-        <div class="hint">例：張OO/女/外聘；當事人有特殊教育學生鑑定證明者，調查小組成員就必須包含具備特殊教育專業的人員。</div>
+        <div class="hint">例：張OO/女/外聘</div>
       </div>
     </div>`;
 
@@ -1210,6 +1282,8 @@ function renderStage04(area, btns, c, d) {
         接獲調查報告日起 <strong>2個月內</strong> 性平會完成議決並通知當事人。
         <span style="color:var(--warn);">（⚠️ 可否延長待法規確認）</span>
       </p>
+
+      ${renderTemplateHints(getStage04Hints(c.is_cross_school))}
 
       <div class="form-group">
         <label>議決日期</label>
@@ -1347,6 +1421,10 @@ function renderStage06(area, btns, c, d) {
         <span style="color:var(--warn);">（⚠️ 可否延長待法規確認）</span>
       </p>
 
+      ${renderTemplateHints([
+        { tpl: CITY_TEMPLATES.T7, primary: true, note: '結案前請確認已完成結案會議紀錄，確保程序完備' }
+      ])}
+
       <div class="form-group">
         <label>主管機關收件日期</label>
         <input type="date" id="f_authority_received_date" value="${d.authority_received_date || ''}">
@@ -1386,6 +1464,7 @@ async function saveStage06() {
 }
 
 async function saveAndCloseStage06() {
+  if (!confirm('結案前請確認：\n\n✓ 已完成「範本七：結案會議紀錄」\n✓ 所有文件已歸檔\n✓ 程序無瑕疵\n\n確定結案？')) return;
   await saveStage06();
   await advanceStage({ new_status: '已結案' });
 }
