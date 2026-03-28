@@ -1935,8 +1935,8 @@ function renderDeadlines(deadlines) {
 
   // 每個 milestone 對應「從哪個階段開始才顯示」
   const MILESTONE_SHOW_FROM = {
-    HANDOVER:               'PRE_STAGE',
-    ACCEPT_NOTIFY:          'STAGE_01',
+    HANDOVER:               '__NEVER__',
+    ACCEPT_NOTIFY:          'STAGE_02',
     INVESTIGATION_COMPLETE: 'STAGE_02',
     COMMITTEE_DECISION:     'STAGE_04',
     APPEAL_DEADLINE:        'STAGE_05',
