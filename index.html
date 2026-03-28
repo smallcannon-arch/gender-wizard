@@ -747,24 +747,19 @@ const CHECKLISTS = {
 
 // ── 各階段應產文件 ────────────────────────────────────────────
 const STAGE_DOCS = {
-  PRE_STAGE: [
-    { code: 'A8', name: '接案移送性平會簽呈', gemini: true },
-    { code: 'A1', name: '申請/檢舉調查書（收件確認）', gemini: false },
-  ],
-  STAGE_01: [
-    { code: 'A3', name: '性平會會議紀錄（受理案件）', gemini: true },
-    { code: 'A4', name: '受理通知函', gemini: true },
-    { code: 'A5', name: '不受理通知函', gemini: true },
-  ],
+ PRE_STAGE: [
+  { code: 'A8', name: '接案移送性平會簽呈', gemini: true },
+  { code: 'A1', name: '申請/檢舉調查書（收件確認）', gemini: false, url: 'https://friendlycampus.k12ea.gov.tw/GenderCase/12/40' },
+],
   STAGE_02: [
     { code: 'B1', name: '調查小組公假函', gemini: true },
-    { code: 'B7', name: '法定保密義務告知書', gemini: false },
+    { code: 'B7', name: '法定保密義務告知書', gemini: false, url: 'https://friendlycampus.k12ea.gov.tw/GenderCase/12/40' },
   ],
   STAGE_03: [
     { code: 'B2', name: '調查訪談開會通知單', gemini: true },
     { code: 'B4', name: '行為人出席調查會議通知函', gemini: true },
     { code: 'B9', name: '延長調查通知函', gemini: true },
-    { code: 'B6', name: '調查訪談紀錄表', gemini: false },
+    { code: 'B6', name: '調查訪談紀錄表', gemini: false, url: 'https://friendlycampus.k12ea.gov.tw/GenderCase/12/40' },
   ],
   STAGE_04: [
     { code: 'C2', name: '性平會議紀錄（審議調查報告）', gemini: true },
@@ -2066,7 +2061,12 @@ function renderChecklist(stage, checks) {
     <div class="doc-item">
       <span class="doc-code">${d.code}</span>
       <span class="doc-name">${d.name}</span>
-      ${d.gemini ? `<button class="btn btn-sm" style="background:var(--info);color:#fff;margin-left:auto;" onclick="draftDoc('${d.code}-${d.name}')">產生草稿</button>` : '<span style="font-size:0.75rem;color:#aaa;margin-left:auto;">表單類</span>'}
+      ${d.gemini
+  ? `<button class="btn btn-sm" style="background:var(--info);color:#fff;margin-left:auto;" onclick="draftDoc('${d.code}-${d.name}')">產生草稿</button>`
+  : d.url
+    ? `<a href="${d.url}" target="_blank" style="margin-left:auto;font-size:0.78rem;color:var(--info);text-decoration:none;border:1px solid var(--info);padding:3px 10px;border-radius:6px;white-space:nowrap;">📥 表單下載</a>`
+    : '<span style="font-size:0.75rem;color:#aaa;margin-left:auto;">表單類</span>'
+}
     </div>
   `).join('');
 
