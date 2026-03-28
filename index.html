@@ -656,6 +656,8 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
     <!-- 動態表單區 -->
     <div id="wizardFormArea"></div>
 
+    <!-- 檢核清單區 -->
+    <div id="checklistArea"></div>
     <!-- 按鈕區 -->
     <div class="btn-group" id="wizardButtons"></div>
   </div>
@@ -1076,7 +1078,8 @@ function renderProgress(currentStage) {
 // ── PRE_STAGE：收件基本資料 ──────────────────────────────
 function renderPreStage(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['PRE_STAGE']) || {};
-  area.innerHTML = renderChecklist('PRE_STAGE', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('PRE_STAGE', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">收件 — 基本資料</h3>
       <p class="panel-desc">填寫案件基本資訊後儲存，即可進入受理決定階段。</p>
@@ -1213,7 +1216,8 @@ function collectPreStageData() {
 // ── STAGE_01：受理決定 ───────────────────────────────────
 function renderStage01(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_01']) || {};
-  area.innerHTML = renderChecklist('STAGE_01', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_01', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段一 — 受理決定</h3>
       <p class="panel-desc">
@@ -1348,7 +1352,8 @@ async function saveAndAdvanceStage01() {
 // ── STAGE_02：組成調查小組 ───────────────────────────────
 function renderStage02(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_02']) || {};
-  area.innerHTML = renderChecklist('STAGE_02', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_02', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段二 — 組成調查小組</h3>
       <p class="panel-desc">
@@ -1405,7 +1410,8 @@ async function saveAndAdvanceStage02() {
 // ── STAGE_03：調查進行 ───────────────────────────────────
 function renderStage03(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_03']) || {};
-  area.innerHTML = renderChecklist('STAGE_03', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_03', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段三 — 調查進行</h3>
       <p class="panel-desc">
@@ -1462,7 +1468,8 @@ async function saveAndAdvanceStage03() {
 // ── STAGE_04：性平會議決 ─────────────────────────────────
 function renderStage04(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_04']) || {};
-  area.innerHTML = renderChecklist('STAGE_04', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_04', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段四 — 性平會議決</h3>
       <p class="panel-desc">
@@ -1525,7 +1532,8 @@ async function saveAndAdvanceStage04() {
 // ── STAGE_05：申復 ───────────────────────────────────────
 function renderStage05(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_05']) || {};
-  area.innerHTML = renderChecklist('STAGE_05', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_05', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段五 — 申復</h3>
       <p class="panel-desc">
@@ -1602,7 +1610,8 @@ async function closeFromStage05() {
 // ── STAGE_06：主管機關審議 ───────────────────────────────
 function renderStage06(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_06']) || {};
-  area.innerHTML = renderChecklist('STAGE_06', checks) + `
+  document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_06', checks);
+  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段六 — 主管機關審議</h3>
       <p class="panel-desc">
@@ -2035,7 +2044,7 @@ function renderChecklist(stage, checks) {
 
 // 切換勾選狀態
 async function toggleCheck(stage, index) {
-  if (!currentCase || !currentCase.case_id) return;
+  if (!currentCase) return;
   const key = `check_${stage}`;
   if (!currentCase._checks) currentCase._checks = {};
   if (!currentCase._checks[stage]) currentCase._checks[stage] = {};
@@ -2062,15 +2071,16 @@ async function toggleCheck(stage, index) {
     }
   }
 
-  // 儲存到後端
-  try {
-    await api('gender_checklist_save', {
-      case_id: currentCase.case_id,
-      stage,
-      checks: currentCase._checks[stage],
-    });
-  } catch(_) {}
-}
+  // 儲存到後端（有 case_id 才送）
+  if (currentCase.case_id) {
+    try {
+      await api('gender_checklist_save', {
+        case_id: currentCase.case_id,
+        stage,
+        checks: currentCase._checks[stage],
+      });
+    } catch(_) {}
+  }
 
 // 產生公文草稿
 async function draftDoc(docType) {
