@@ -1401,14 +1401,12 @@ async function saveAndAdvanceStage05() {
 async function closeFromStage05() {
   if (!confirm('確定直接結案？申復期限已過且當事人未提出申復。')) return;
   const data_json = { ...currentCase.data_json, appeal_status: '未提出' };
-  await saveCase({ data_json, status: '已結案' });
-  // 推到 CLOSED
-  await api('gender_advance_stage', { case_id: currentCase.case_id, new_status: '已結案' });
-  // 再推一次到 CLOSED（STAGE_05 → STAGE_06 → CLOSED）— 或直接多推
-  // 簡化：直接 save stage=CLOSED
-  await saveCase({ stage: 'CLOSED', status: '已結案' });
+  // 直接把 stage 和 status 寫死為結案，不透過 advance_stage
+  const ok = await saveCase({ data_json, stage: 'CLOSED', status: '已結案' });
+  if (ok) {
   toast('案件已結案', 'ok');
   backToList();
+ }
 }
 
 // ── STAGE_06：主管機關審議 ───────────────────────────────
@@ -1715,9 +1713,9 @@ async function saveDeadlines() {
 async function loadDeadlines(caseId) {
   try {
     const res = await api('gender_deadline_list', { case_id: caseId });
-    if (res.ok && res.deadlines && res.deadlines.length > 0) {
+    if (res.ok && res.list && res.list.length > 0) {
       document.getElementById('deadlinePanel').style.display = '';
-      renderDeadlines(res.deadlines);
+      renderDeadlines(res.list);
     } else {
       document.getElementById('deadlinePanel').style.display = 'none';
     }
