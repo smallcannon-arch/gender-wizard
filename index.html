@@ -1215,6 +1215,7 @@ function collectPreStageData() {
 
 // ── STAGE_01：受理決定 ───────────────────────────────────
 function renderStage01(area, btns, c, d) {
+  const needsTransfer = (c.data_json || {}).respondent_role === 'PRINCIPAL';
   const checks = (currentCase._checks && currentCase._checks['STAGE_01']) || {};
   document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_01', checks);
   area.innerHTML = `
@@ -1351,6 +1352,8 @@ async function saveAndAdvanceStage01() {
 
 // ── STAGE_02：組成調查小組 ───────────────────────────────
 function renderStage02(area, btns, c, d) {
+  const needsFullExternal = ['PRINCIPAL','TEACHER','STAFF'].includes((d || {}).respondent_role);
+  const members = (d && d.panel_members) || [];
   const checks = (currentCase._checks && currentCase._checks['STAGE_02']) || {};
   document.getElementById('checklistArea').innerHTML = renderChecklist('STAGE_02', checks);
   area.innerHTML = `
