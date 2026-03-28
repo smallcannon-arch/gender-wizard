@@ -1702,7 +1702,7 @@ async function saveDeadlines() {
   }
 
   if (deadlines.length > 0) {
-    await api('gender_save_with_deadlines', {
+    await api('gender_deadlines_only', {
       case_id: currentCase.case_id,
       deadlines,
     });
