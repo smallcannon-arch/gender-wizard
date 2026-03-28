@@ -1515,7 +1515,7 @@ async function saveCase(updates) {
       toast('儲存成功', 'ok');
 
       // 計算並儲存期限
-      await saveDeadlines();
+      try { await saveDeadlines(); } catch(_) {}
       return true;
     } else {
       toast('儲存失敗：' + res.error, 'error');
