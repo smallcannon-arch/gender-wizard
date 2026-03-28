@@ -1741,7 +1741,7 @@ async function advanceStage(extraParams = {}) {
       currentCase.stage = res.to_stage;
       if (extraParams.new_status) currentCase.status = extraParams.new_status;
       toast(`已推進至 ${(STAGES.find(s=>s.id===res.to_stage)||{}).label || res.to_stage}`, 'ok');
-      renderWizard();
+      try { renderWizard(); } catch(e) { console.error('renderWizard error:', e); }
     } else if (res.error === 'NEED_FULL_EXTERNAL_CONFIRM') {
       // 顯示外聘確認 modal
       openModal('modalFullExternal');
