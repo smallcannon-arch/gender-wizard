@@ -988,8 +988,19 @@ async function openCase(caseId) {
   try {
     const res = await api('gender_load', { case_id: caseId });
     if (res.ok) {
-      currentCase = res.case;
-      renderWizard();
+  currentCase = res.case;
+  currentCase._checks = {};
+  try {
+    const clRes = await api('gender_checklist_load', {
+      case_id: currentCase.case_id,
+      stage: currentCase.stage,
+    });
+    if (clRes.ok) {
+      currentCase._checks[currentCase.stage] = clRes.checks;
+    }
+  } catch(_) {}
+  renderWizard();
+}
     } else {
       toast('載入案件失敗：' + res.error, 'error');
       backToList();
@@ -1339,9 +1350,6 @@ async function saveAndAdvanceStage01() {
 function renderStage02(area, btns, c, d) {
   const checks = (currentCase._checks && currentCase._checks['STAGE_02']) || {};
   area.innerHTML = renderChecklist('STAGE_02', checks) + `
-    <div class="panel">
-
-  area.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">階段二 — 組成調查小組</h3>
       <p class="panel-desc">
