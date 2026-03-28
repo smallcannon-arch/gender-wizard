@@ -1743,7 +1743,7 @@ function renderDeadlines(deadlines) {
       <div class="deadline-card ${statusClass}">
         <div>
           <div class="deadline-label">${esc(dl.note || dl.milestone)}</div>
-          <div class="deadline-dates">起算：${dl.start_date} → 截止：${dl.due_date}</div>
+          <div class="deadline-dates">起算：${dl.start_date.split('T')[0]} → 截止：${dl.due_date.split('T')[0]}</div>
         </div>
         <span class="deadline-remaining ${statusClass}">${remainText}</span>
       </div>`;
