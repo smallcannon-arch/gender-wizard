@@ -1955,7 +1955,7 @@ function renderDeadlines(deadlines) {
     const showFrom = MILESTONE_SHOW_FROM[dl.milestone];
     if (!showFrom) return true; // 未知 milestone 一律顯示
     const showFromIdx = STAGE_ORDER.indexOf(showFrom);
-    return showFromIdx <= currentStageIdx;
+    return showFromIdx < currentStageIdx;
   });
 
   if (filtered.length === 0) {
