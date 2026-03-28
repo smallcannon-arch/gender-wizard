@@ -479,6 +479,79 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
   border-top: 1px solid var(--warm);
   margin-top: 40px;
 }
+
+/* ── 檢核清單 ──────────────────────────────────────────────── */
+.check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 6px;
+  border: 1.5px solid var(--line);
+}
+.check-item:hover { background: var(--warm); }
+.check-item.checked { background: var(--ok-light); border-color: var(--ok); }
+.check-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ok);
+  flex-shrink: 0;
+  background: #fff;
+}
+.check-item.checked .check-box {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+.check-label { font-size: 0.88rem; line-height: 1.5; }
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--warm);
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+.doc-code {
+  background: var(--info);
+  color: #fff;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── 草稿 Modal ─────────────────────────────────────────────── */
+.draft-modal {
+  max-width: 700px;
+  width: 100%;
+}
+.draft-content {
+  background: var(--warm);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.85rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+  
 </style>
 </head>
 <body>
@@ -523,6 +596,22 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
   </div>
 </div>
 
+<!-- ═══ Modal: 公文草稿 ═══ -->
+<div class="modal-overlay" id="modalDraft">
+  <div class="modal draft-modal">
+    <h3>📄 公文草稿（Gemini 產生）</h3>
+    <div class="alert alert-warn" style="margin-bottom:12px;">
+      <span class="alert-icon">⚠</span>
+      <div>本草稿由 AI 產生，請務必核對法條與日期後再使用。</div>
+    </div>
+    <div class="draft-content" id="draftContent"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="copyDraft()">📋 複製草稿</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalDraft')">關閉</button>
+    </div>
+  </div>
+</div>
+  
 <!-- ═══ Main Content ═══ -->
 <div class="container" id="mainContent">
 
@@ -584,6 +673,90 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
 // gender-wizard — 前端邏輯
 // ============================================================
 
+// ── 各階段檢核清單 ────────────────────────────────────────────
+const CHECKLISTS = {
+  PRE_STAGE: [
+    '已確認提出方式（書面/言詞/電子郵件），言詞或電郵已作成書面紀錄並由提出者簽名',
+    '知悉後24小時內完成校安通報（涉未成年或性侵害須加作社政通報）',
+    '已確認學校管轄權，若無管轄權已於7工作日內移送並通知當事人',
+    '已於收件後3日內將事證資料交付性平會',
+  ],
+  STAGE_01: [
+    '已於20日內完成受理與否決定，並以書面通知申請人/被害人/檢舉人',
+    '若不受理，書面已敘明理由，並告知20日內申復權利及受理單位',
+    '已檢核是否屬公益事件（多名被害人/教職員對學生），必要時主動啟動調查',
+    '受理後已啟動隔離保護及心理諮商措施',
+  ],
+  STAGE_02: [
+    '小組人數為3人或5人，女性比例達1/2以上',
+    '具調查資格之外聘專家學者達1/3以上',
+    '若行為人為教職員工，已確認小組成員全部外聘',
+    '已完成利益迴避審查，相關人員已簽署迴避與保密切結書',
+  ],
+  STAGE_03: [
+    '已以書面（雙掛號）通知雙方當事人，載明保密義務及受訪者權利',
+    '嚴守分別隔離訪談，禁止雙方對質，訪談紀錄已由受訪者閱覽確認並簽名',
+    '事實認定均有客觀物證或人證支持，未以行為人辯解作為客觀事實',
+    '已於受理後2個月內完成調查報告（展延須通知當事人）',
+  ],
+  STAGE_04: [
+    '性平會僅就程序合法性與論理/經驗法則審議，未重新實體調查',
+    '處置建議與議處建議符合法規與比例原則',
+    '若含「向被害人道歉」，已取得被害人書面同意',
+    '已將調查報告正式移送權責單位議處',
+  ],
+  STAGE_05: [
+    '議處前已通知被害人/法定代理人限期提出陳述意見',
+    '若涉重大懲處，已通知行為人陳述意見',
+    '權責單位未自行重新調查，未推翻性平會事實認定',
+    '已於接獲調查報告後2個月內完成議處決定',
+  ],
+  STAGE_06: [
+    '申復提出者身分與期限合法（收受結果次日起30日內）',
+    '申復審議小組組成合法（含法律及性平專家，原委員不得擔任）',
+    '結果通知已附去識別化調查報告，並載明30日申復權利',
+    '已確認雙掛號送達並取得送達證書',
+  ],
+};
+
+// ── 各階段應產文件 ────────────────────────────────────────────
+const STAGE_DOCS = {
+  PRE_STAGE: [
+    { code: 'A8', name: '接案移送性平會簽呈', gemini: true },
+    { code: 'A1', name: '申請/檢舉調查書（收件確認）', gemini: false },
+  ],
+  STAGE_01: [
+    { code: 'A3', name: '性平會會議紀錄（受理案件）', gemini: true },
+    { code: 'A4', name: '受理通知函', gemini: true },
+    { code: 'A5', name: '不受理通知函', gemini: true },
+  ],
+  STAGE_02: [
+    { code: 'B1', name: '調查小組公假函', gemini: true },
+    { code: 'B7', name: '法定保密義務告知書', gemini: false },
+  ],
+  STAGE_03: [
+    { code: 'B2', name: '調查訪談開會通知單', gemini: true },
+    { code: 'B4', name: '行為人出席調查會議通知函', gemini: true },
+    { code: 'B9', name: '延長調查通知函', gemini: true },
+    { code: 'B6', name: '調查訪談紀錄表', gemini: false },
+  ],
+  STAGE_04: [
+    { code: 'C2', name: '性平會議紀錄（審議調查報告）', gemini: true },
+    { code: 'C3', name: '通知身分改變教師書面陳述機會', gemini: true },
+    { code: 'C5', name: '懲處建議書會簽懲處單位', gemini: true },
+  ],
+  STAGE_05: [
+    { code: 'C6', name: '通知申請人/被害人/檢舉人調查處理結果', gemini: true },
+    { code: 'C7', name: '通知行為人懲處調查處理結果', gemini: true },
+    { code: 'C8', name: '事件處理過程大事紀', gemini: true },
+  ],
+  STAGE_06: [
+    { code: 'D3', name: '申復審議小組簽文', gemini: true },
+    { code: 'D4', name: '申復決定書通知公文（有理由）', gemini: true },
+    { code: 'D5', name: '申復決定書通知公文（無理由）', gemini: true },
+  ],
+};
+  
 const PROXY_URL = 'https://gender-proxy.smallcannon.workers.dev';
 const CLIENT_ID = '708047059390-2qhkln2rq34enarpa3ipucukm7bbl97m.apps.googleusercontent.com';
 
@@ -892,7 +1065,8 @@ function renderProgress(currentStage) {
 
 // ── PRE_STAGE：收件基本資料 ──────────────────────────────
 function renderPreStage(area, btns, c, d) {
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['PRE_STAGE']) || {};
+  area.innerHTML = renderChecklist('PRE_STAGE', checks) + `
     <div class="panel">
       <h3 class="panel-title">收件 — 基本資料</h3>
       <p class="panel-desc">填寫案件基本資訊後儲存，即可進入受理決定階段。</p>
@@ -989,6 +1163,7 @@ async function savePreStage() {
 }
 
 async function saveAndAdvancePreStage() {
+  if (!checklistComplete('PRE_STAGE')) return;
   const data = collectPreStageData();
   if (!data) return;
   const saved = await saveCase(data);
@@ -1027,9 +1202,8 @@ function collectPreStageData() {
 
 // ── STAGE_01：受理決定 ───────────────────────────────────
 function renderStage01(area, btns, c, d) {
-  const needsTransfer = d.respondent_role === 'PRINCIPAL';
-
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['STAGE_01']) || {};
+  area.innerHTML = renderChecklist('STAGE_01', checks) + `
     <div class="panel">
       <h3 class="panel-title">階段一 — 受理決定</h3>
       <p class="panel-desc">
@@ -1143,6 +1317,7 @@ async function saveStage01() {
 }
 
 async function saveAndAdvanceStage01() {
+  if (!checklistComplete('STAGE_01')) return;
   const d = collectStage01Data();
   if (!d) return;
   await saveCase({ data_json: d.data_json });
@@ -1162,8 +1337,9 @@ async function saveAndAdvanceStage01() {
 
 // ── STAGE_02：組成調查小組 ───────────────────────────────
 function renderStage02(area, btns, c, d) {
-  const needsFullExternal = ['PRINCIPAL','TEACHER','STAFF'].includes(d.respondent_role);
-  const members = d.panel_members || [];
+  const checks = (currentCase._checks && currentCase._checks['STAGE_02']) || {};
+  area.innerHTML = renderChecklist('STAGE_02', checks) + `
+    <div class="panel">
 
   area.innerHTML = `
     <div class="panel">
@@ -1214,13 +1390,15 @@ async function saveStage02() {
 }
 
 async function saveAndAdvanceStage02() {
+  if (!checklistComplete('STAGE_02')) return;
   await saveStage02();
   await advanceStage();
 }
 
 // ── STAGE_03：調查進行 ───────────────────────────────────
 function renderStage03(area, btns, c, d) {
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['STAGE_03']) || {};
+  area.innerHTML = renderChecklist('STAGE_03', checks) + `
     <div class="panel">
       <h3 class="panel-title">階段三 — 調查進行</h3>
       <p class="panel-desc">
@@ -1266,6 +1444,7 @@ async function saveStage03() {
 }
 
 async function saveAndAdvanceStage03() {
+  if (!checklistComplete('STAGE_03')) return;
   if (!val('f_report_complete_date')) {
     toast('請填寫調查報告完成日期再推進', 'warn'); return;
   }
@@ -1275,7 +1454,8 @@ async function saveAndAdvanceStage03() {
 
 // ── STAGE_04：性平會議決 ─────────────────────────────────
 function renderStage04(area, btns, c, d) {
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['STAGE_04']) || {};
+  area.innerHTML = renderChecklist('STAGE_04', checks) + `
     <div class="panel">
       <h3 class="panel-title">階段四 — 性平會議決</h3>
       <p class="panel-desc">
@@ -1330,13 +1510,15 @@ async function saveStage04() {
 }
 
 async function saveAndAdvanceStage04() {
+  if (!checklistComplete('STAGE_04')) return;
   await saveStage04();
   await advanceStage();
 }
 
 // ── STAGE_05：申復 ───────────────────────────────────────
 function renderStage05(area, btns, c, d) {
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['STAGE_05']) || {};
+  area.innerHTML = renderChecklist('STAGE_05', checks) + `
     <div class="panel">
       <h3 class="panel-title">階段五 — 申復</h3>
       <p class="panel-desc">
@@ -1391,6 +1573,7 @@ async function saveStage05() {
 }
 
 async function saveAndAdvanceStage05() {
+  if (!checklistComplete('STAGE_05')) return;
   if (val('f_appeal_status') !== '已提出') {
     toast('請確認申復狀態為「已提出」再推進', 'warn'); return;
   }
@@ -1411,7 +1594,8 @@ async function closeFromStage05() {
 
 // ── STAGE_06：主管機關審議 ───────────────────────────────
 function renderStage06(area, btns, c, d) {
-  area.innerHTML = `
+  const checks = (currentCase._checks && currentCase._checks['STAGE_06']) || {};
+  area.innerHTML = renderChecklist('STAGE_06', checks) + `
     <div class="panel">
       <h3 class="panel-title">階段六 — 主管機關審議</h3>
       <p class="panel-desc">
@@ -1462,7 +1646,8 @@ async function saveStage06() {
 }
 
 async function saveAndCloseStage06() {
-  if (!confirm('結案前請確認：\n\n✓ 已完成「範本七：結案會議紀錄」\n✓ 所有文件已歸檔\n✓ 程序無瑕疵\n\n確定結案？')) return;
+  if (!checklistComplete('STAGE_06')) return;
+  if (!confirm('結案前請確認...')) return;
   await saveStage06();
   await advanceStage({ new_status: '已結案' });
 }
@@ -1800,6 +1985,111 @@ async function withLoading(fn, btnEl) {
   }
 }
 
+// ── 檢核清單工具 ─────────────────────────────────────────────
+
+// 渲染檢核清單（含應產文件與草稿按鈕）
+function renderChecklist(stage, checks) {
+  const items = CHECKLISTS[stage] || [];
+  const docs  = STAGE_DOCS[stage] || [];
+  if (items.length === 0) return '';
+
+  const allChecked = items.every((_, i) => checks[i]);
+
+  const checkItems = items.map((item, i) => `
+    <div class="check-item ${checks[i] ? 'checked' : ''}" onclick="toggleCheck('${stage}', ${i})">
+      <span class="check-box">${checks[i] ? '✓' : ''}</span>
+      <span class="check-label">${esc(item)}</span>
+    </div>
+  `).join('');
+
+  const docItems = docs.map(d => `
+    <div class="doc-item">
+      <span class="doc-code">${d.code}</span>
+      <span class="doc-name">${d.name}</span>
+      ${d.gemini ? `<button class="btn btn-sm" style="background:var(--info);color:#fff;margin-left:auto;" onclick="draftDoc('${d.code}-${d.name}')">產生草稿</button>` : '<span style="font-size:0.75rem;color:#aaa;margin-left:auto;">表單類</span>'}
+    </div>
+  `).join('');
+
+  return `
+    <div class="panel" style="margin-bottom:16px;">
+      <h3 class="panel-title" style="display:flex;align-items:center;gap:8px;">
+        ✅ 本階段檢核清單
+        ${allChecked ? '<span style="font-size:0.8rem;background:var(--ok);color:#fff;padding:2px 10px;border-radius:12px;">全部完成</span>' : '<span style="font-size:0.8rem;background:var(--warn-light);color:var(--warn);padding:2px 10px;border-radius:12px;">未完成</span>'}
+      </h3>
+      <div class="checklist-items" id="checklist-${stage}">${checkItems}</div>
+      ${docs.length > 0 ? `
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--warm);">
+          <div style="font-size:0.82rem;font-weight:500;color:var(--info);margin-bottom:8px;">📄 本階段應產文件</div>
+          <div class="doc-list">${docItems}</div>
+        </div>
+      ` : ''}
+    </div>`;
+}
+
+// 切換勾選狀態
+async function toggleCheck(stage, index) {
+  if (!currentCase || !currentCase.case_id) return;
+  const key = `check_${stage}`;
+  if (!currentCase._checks) currentCase._checks = {};
+  if (!currentCase._checks[stage]) currentCase._checks[stage] = {};
+  currentCase._checks[stage][index] = !currentCase._checks[stage][index];
+
+  // 重繪清單
+  const container = document.getElementById(`checklist-${stage}`);
+  if (container) {
+    const items = CHECKLISTS[stage] || [];
+    const checks = currentCase._checks[stage] || {};
+    container.innerHTML = items.map((item, i) => `
+      <div class="check-item ${checks[i] ? 'checked' : ''}" onclick="toggleCheck('${stage}', ${i})">
+        <span class="check-box">${checks[i] ? '✓' : ''}</span>
+        <span class="check-label">${esc(item)}</span>
+      </div>
+    `).join('');
+    // 更新標題狀態
+    const allChecked = items.every((_, i) => checks[i]);
+    const badge = container.closest('.panel').querySelector('.panel-title span:last-child');
+    if (badge) {
+      badge.style.background = allChecked ? 'var(--ok)' : 'var(--warn-light)';
+      badge.style.color = allChecked ? '#fff' : 'var(--warn)';
+      badge.textContent = allChecked ? '全部完成' : '未完成';
+    }
+  }
+
+  // 儲存到後端
+  try {
+    await api('gender_checklist_save', {
+      case_id: currentCase.case_id,
+      stage,
+      checks: currentCase._checks[stage],
+    });
+  } catch(_) {}
+}
+
+// 產生公文草稿
+async function draftDoc(docType) {
+  if (!currentCase || !currentCase.case_id) {
+    toast('請先儲存案件', 'warn'); return;
+  }
+  const modal = document.getElementById('modalDraft');
+  const content = document.getElementById('draftContent');
+  content.textContent = '正在產生草稿...';
+  modal.classList.add('active');
+
+  try {
+    const res = await api('gender_draft_doc', {
+      case_id: currentCase.case_id,
+      doc_type: docType,
+    });
+    if (res.ok) {
+      content.textContent = res.draft;
+    } else {
+      content.textContent = '產生失敗：' + res.error;
+    }
+  } catch(e) {
+    content.textContent = '網路錯誤';
+  }
+}
+  
 // ── UI 工具 ──────────────────────────────────────────────
 function val(id) {
   const el = document.getElementById(id);
@@ -1826,6 +2116,26 @@ function toast(msg, type = 'ok') {
 function openModal(id) {
   document.getElementById(id).classList.add('active');
 }
+
+function copyDraft() {
+  const text = document.getElementById('draftContent').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    toast('已複製到剪貼簿', 'ok');
+  }).catch(() => {
+    toast('複製失敗，請手動選取', 'warn');
+  });
+}
+
+function checklistComplete(stage) {
+  const items  = CHECKLISTS[stage] || [];
+  const checks = (currentCase._checks && currentCase._checks[stage]) || {};
+  const done   = items.every((_, i) => checks[i]);
+  if (!done) {
+    toast('請先完成所有檢核項目再推進', 'warn');
+  }
+  return done;
+}
+
 function closeModal(id) {
   document.getElementById(id).classList.remove('active');
 }
