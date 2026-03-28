@@ -1508,7 +1508,7 @@ async function saveCase(updates) {
   try {
     const res = await api('gender_save', params);
     if (res.ok) {
-      if (res.case_id) currentCase.case_id = res.case_id;
+      if (res.case_id) currentCase.case_id = String(res.case_id);
       // 更新 local state
       Object.assign(currentCase, params);
       if (updates.data_json) currentCase.data_json = updates.data_json;
