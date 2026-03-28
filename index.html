@@ -1915,6 +1915,8 @@ async function saveDeadlines() {
 
 // ── 期限顯示 ─────────────────────────────────────────────
 async function loadDeadlines(caseId) {
+  document.getElementById('deadlinePanel').style.display = '';
+  document.getElementById('deadlineList').innerHTML = '<div style="font-size:0.82rem;color:#aaa;padding:8px 0;">⏳ 載入期限中...</div>';
   try {
     const res = await api('gender_deadline_list', { case_id: caseId });
     if (res.ok && res.list && res.list.length > 0) {
