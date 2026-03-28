@@ -988,19 +988,18 @@ async function openCase(caseId) {
   try {
     const res = await api('gender_load', { case_id: caseId });
     if (res.ok) {
-  currentCase = res.case;
-  currentCase._checks = {};
-  try {
-    const clRes = await api('gender_checklist_load', {
-      case_id: currentCase.case_id,
-      stage: currentCase.stage,
-    });
-    if (clRes.ok) {
-      currentCase._checks[currentCase.stage] = clRes.checks;
-    }
-  } catch(_) {}
-  renderWizard();
-}
+      currentCase = res.case;
+      currentCase._checks = {};
+      try {
+        const clRes = await api('gender_checklist_load', {
+          case_id: currentCase.case_id,
+          stage: currentCase.stage,
+        });
+        if (clRes.ok) {
+          currentCase._checks[currentCase.stage] = clRes.checks;
+        }
+      } catch(_) {}
+      renderWizard();
     } else {
       toast('載入案件失敗：' + res.error, 'error');
       backToList();
