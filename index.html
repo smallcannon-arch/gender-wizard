@@ -1933,14 +1933,43 @@ function renderDeadlines(deadlines) {
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  el.innerHTML = deadlines.map(dl => {
+  // 每個 milestone 對應「從哪個階段開始才顯示」
+  const MILESTONE_SHOW_FROM = {
+    HANDOVER:               'PRE_STAGE',
+    ACCEPT_NOTIFY:          'STAGE_01',
+    INVESTIGATION_COMPLETE: 'STAGE_02',
+    COMMITTEE_DECISION:     'STAGE_04',
+    APPEAL_DEADLINE:        'STAGE_05',
+    APPEAL_DECISION:        'STAGE_06',
+  };
+
+  const STAGE_ORDER = [
+    'PRE_STAGE','STAGE_01','STAGE_02','STAGE_03',
+    'STAGE_04','STAGE_05','STAGE_06','CLOSED'
+  ];
+
+  const currentStageIdx = STAGE_ORDER.indexOf(currentCase.stage);
+
+  // 過濾：只留下「起始顯示階段 <= 目前階段」的 milestone
+  const filtered = deadlines.filter(dl => {
+    const showFrom = MILESTONE_SHOW_FROM[dl.milestone];
+    if (!showFrom) return true; // 未知 milestone 一律顯示
+    const showFromIdx = STAGE_ORDER.indexOf(showFrom);
+    return showFromIdx <= currentStageIdx;
+  });
+
+  if (filtered.length === 0) {
+    document.getElementById('deadlinePanel').style.display = 'none';
+    return;
+  }
+
+  el.innerHTML = filtered.map(dl => {
     const due = new Date(dl.due_date);
     due.setHours(0,0,0,0);
     const diff = Math.ceil((due - today) / 86400000);
     let statusClass = 'safe';
     let remainText = `剩 ${diff} 天`;
     if (diff < 0) { statusClass = 'overdue'; remainText = `已逾期 ${Math.abs(diff)} 天`; }
-    else if (diff <= 3) { statusClass = 'warning'; }
     else if (diff <= 7) { statusClass = 'warning'; }
 
     return `
