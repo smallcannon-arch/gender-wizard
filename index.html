@@ -831,8 +831,13 @@ function getStage01Docs() {
 // ── 渲染文件卡片（共用）────────────────────────────────────────
 function renderDocItemsHtml(docs) {
   if (!docs || docs.length === 0) {
-    return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">請先選擇處理決定與相關條件</div>';
+  const decision = val('f_accept_decision');
+  const pi = val('f_public_interest');
+  if (decision === '暫不調查' && pi === '達門檻') {
+    return '<div style="font-size:0.82rem;color:var(--danger);padding:4px 0;">⚠️ 本案已達公益門檻，請將上方處理決定改為「受理調查」後，文件清單將自動更新。</div>';
   }
+  return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">請先選擇處理決定與相關條件</div>';
+}
   return docs.map(d => `
     <div class="doc-item">
       <div class="doc-item-text">
