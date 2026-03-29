@@ -1351,6 +1351,7 @@ function onAcceptDecisionChange() {
   const decision = val('f_accept_decision');
   const is227 = document.getElementById('f_is_227') ? document.getElementById('f_is_227').checked : false;
   const publicInterest = val('f_public_interest');
+  
 
   // 公益評估：只有暫不調查才顯示
   const piEl = document.getElementById('fgPublicInterest');
@@ -1371,6 +1372,18 @@ function onAcceptDecisionChange() {
   // 動態文件清單
   const docList = document.getElementById('stage01DocList');
   if (docList) docList.innerHTML = renderDocItemsHtml(getStage01Docs());
+  const advanceBtn = document.querySelector('#wizardButtons .btn-ok');
+  if (advanceBtn) {
+    if (decision === '受理') {
+      advanceBtn.textContent = '儲存並推進 →';
+    } else if (decision === '暫不調查') {
+      advanceBtn.textContent = '💾 儲存（保留調查權）';
+    } else if (decision === '移送' || decision === '顧問諮詢') {
+      advanceBtn.textContent = '💾 儲存並標記';
+    } else {
+      advanceBtn.textContent = '儲存並推進 →';
+    }
+  }
 }
 
 function collectStage01Data() {
