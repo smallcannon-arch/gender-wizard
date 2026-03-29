@@ -831,13 +831,22 @@ function getStage01Docs() {
 // ── 渲染文件卡片（共用）────────────────────────────────────────
 function renderDocItemsHtml(docs) {
   if (!docs || docs.length === 0) {
-  const decision = val('f_accept_decision');
-  const pi = val('f_public_interest');
-  if (decision === '暫不調查' && pi === '達門檻') {
-    return '<div style="font-size:0.82rem;color:var(--danger);padding:4px 0;">⚠️ 本案已達公益門檻，請將上方處理決定改為「受理調查」後，文件清單將自動更新。</div>';
+    const decision = val('f_accept_decision');
+    const pi = val('f_public_interest');
+    if (!decision) {
+      return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">請先選擇處理決定</div>';
+    }
+    if (decision === '暫不調查' && pi === '達門檻') {
+      return '<div style="font-size:0.82rem;color:var(--danger);padding:4px 0;">⚠️ 本案已達公益門檻，請將處理決定改為「受理調查」，文件清單將自動更新。</div>';
+    }
+    if (decision === '暫不調查' && !pi) {
+      return '<div style="font-size:0.82rem;color:var(--warn);padding:4px 0;">請選擇上方的公益評估結果，以顯示對應文件。</div>';
+    }
+    if (decision === '移送' || decision === '顧問諮詢') {
+      return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">本決定無需產出特定文件。</div>';
+    }
+    return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">請先選擇處理決定與相關條件</div>';
   }
-  return '<div style="font-size:0.82rem;color:#aaa;padding:4px 0;">請先選擇處理決定與相關條件</div>';
-}
   return docs.map(d => `
     <div class="doc-item">
       <div class="doc-item-text">
