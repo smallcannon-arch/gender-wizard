@@ -1337,51 +1337,42 @@ function renderStage01(area, btns, c, d) {
       </div>
     </div>`;
 
-  onAcceptDecisionChange();
-
   btns.innerHTML = `
     <button class="btn btn-secondary" onclick="withLoading(rollbackStage, this)">← 回上一步</button>
     <button class="btn btn-primary" onclick="withLoading(saveStage01, this)">💾 儲存</button>
     <button class="btn btn-ok" onclick="withLoading(saveAndAdvanceStage01, this)">儲存並推進 →</button>
   `;
+  
+  onAcceptDecisionChange(); 
 }
 
 function onAcceptDecisionChange() {
   const decision = val('f_accept_decision');
-  const is227 = document.getElementById('f_is_227') ? document.getElementById('f_is_227').checked : false;
+  const is227 = document.getElementById('f_is_227')?.checked ?? false;
   const publicInterest = val('f_public_interest');
-  
 
-  // 公益評估：只有暫不調查才顯示
-  const piEl = document.getElementById('fgPublicInterest');
-  if (piEl) piEl.style.display = decision === '暫不調查' ? '' : 'none';
+  const show = (id, visible) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  };
 
-  // 公益門檻警告
-  const piWarnEl = document.getElementById('fgPublicInterestWarn');
-  if (piWarnEl) piWarnEl.style.display = (decision === '暫不調查' && publicInterest === '達門檻') ? '' : 'none';
+  show('fgPublicInterest', decision === '暫不調查');
+  show('fgPublicInterestWarn', decision === '暫不調查' && publicInterest === '達門檻');
+  show('fgAcceptDate', decision === '受理');
+  show('fgRejectReason', decision === '不受理');
 
-  // 受理日期
-  const dateEl = document.getElementById('fgAcceptDate');
-  if (dateEl) dateEl.style.display = decision === '受理' ? '' : 'none';
-
-  // 不受理理由
-  const rejectEl = document.getElementById('fgRejectReason');
-  if (rejectEl) rejectEl.style.display = decision === '不受理' ? '' : 'none';
-
-  // 動態文件清單
   const docList = document.getElementById('stage01DocList');
   if (docList) docList.innerHTML = renderDocItemsHtml(getStage01Docs());
+
   const advanceBtn = document.querySelector('#wizardButtons .btn-ok');
   if (advanceBtn) {
-    if (decision === '受理') {
-      advanceBtn.textContent = '儲存並推進 →';
-    } else if (decision === '暫不調查') {
-      advanceBtn.textContent = '💾 儲存（保留調查權）';
-    } else if (decision === '移送' || decision === '顧問諮詢') {
-      advanceBtn.textContent = '💾 儲存並標記';
-    } else {
-      advanceBtn.textContent = '儲存並推進 →';
-    }
+    const textMap = {
+      '受理':     '儲存並推進 →',
+      '暫不調查': '💾 儲存（保留調查權）',
+      '移送':     '💾 儲存並標記',
+      '顧問諮詢': '💾 儲存並標記',
+    };
+    advanceBtn.textContent = textMap[decision] || '儲存並推進 →';
   }
 }
 
