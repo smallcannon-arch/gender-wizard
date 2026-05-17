@@ -647,6 +647,9 @@ h1, h2, h3 { font-family: 'Noto Serif TC', serif; }
       <h2>我的案件</h2>
       <button class="btn-new" onclick="newCase()">＋ 新增案件</button>
     </div>
+    <p style="font-size:0.82rem;color:#777;margin:-8px 0 16px;line-height:1.5;">
+      本系統為流程輔助工具，刪除僅移除本工具內之輔助紀錄，正式案件資料仍應依學校規定保存。
+    </p>
     <div id="caseListLoading" class="loading active">
       <div class="spinner"></div>
       載入中...
@@ -878,6 +881,8 @@ const STAGES = [
   { id: 'CLOSED',     label: '結案',    num: '✓' },
 ];
 
+const CLOSED_STATUSES = ['已結案', '不受理結案', '移送結案'];
+
 const CASE_TYPE_MAP = {
   SEXUAL_HARASSMENT: '性騷擾',
   SEXUAL_BULLYING:   '性霸凌',
@@ -896,6 +901,55 @@ let currentUser = null;
 let currentCase = null;
 let caseList = [];
 
+function ensureChecklistState() {
+  if (!currentCase) return;
+  if (!currentCase._checks) currentCase._checks = {};
+  if (!currentCase._dirtyChecks) currentCase._dirtyChecks = {};
+}
+
+function dirtyChecklistStages() {
+  ensureChecklistState();
+  if (!currentCase || !currentCase._dirtyChecks) return [];
+  return Object.keys(currentCase._dirtyChecks).filter(stage => currentCase._dirtyChecks[stage]);
+}
+
+function hasDirtyChecklistChanges() {
+  return dirtyChecklistStages().length > 0;
+}
+
+function setChecklistSaveStatus(stage, status) {
+  const el = document.getElementById(`checklist-save-status-${stage}`);
+  if (!el) return;
+  const messages = {
+    dirty: '檢核清單尚未儲存',
+    saving: '檢核清單儲存中',
+    saved: '檢核清單已儲存',
+    error: '檢核清單尚未同步',
+  };
+  const colors = {
+    dirty: 'var(--warn)',
+    saving: 'var(--info)',
+    saved: 'var(--ok)',
+    error: 'var(--danger)',
+  };
+  const msg = messages[status] || '';
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+  el.style.color = colors[status] || 'var(--muted)';
+}
+
+function getDeadlineSignature(dataJson) {
+  const d = dataJson || {};
+  return JSON.stringify({
+    received_date: d.received_date || '',
+    accept_date: d.accept_date || '',
+    extension_count: d.extension_count || 0,
+    report_complete_date: d.report_complete_date || '',
+    notice_date: d.notice_date || '',
+    authority_received_date: d.authority_received_date || '',
+  });
+}
+
 // ── Google 登入 ──────────────────────────────────────────
 window.onload = function() {
   google.accounts.id.initialize({
@@ -908,6 +962,12 @@ window.onload = function() {
     { theme: 'outline', size: 'large', text: 'signin_with', locale: 'zh-TW', width: 280 }
   );
 };
+
+window.addEventListener('beforeunload', function(e) {
+  if (!hasDirtyChecklistChanges()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 function handleCredentialResponse(response) {
   const payload = parseJwt(response.credential);
@@ -924,7 +984,12 @@ function handleCredentialResponse(response) {
   loadCaseList();
 }
 
-function logout() {
+function logout(options = {}) {
+  const force = options === true || options.force;
+  if (!force && hasDirtyChecklistChanges()) {
+    const ok = confirm('檢核清單尚未儲存，確定要登出？未儲存的勾選不會寫入 Google Sheets。');
+    if (!ok) return;
+  }
   google.accounts.id.disableAutoSelect();
   currentUser = null;
   currentCase = null;
@@ -953,7 +1018,7 @@ async function api(action, params = {}) {
   const data = await res.json();
   if (!data.ok && data.error === 'INVALID_TOKEN') {
     toast('登入已過期，請重新登入', 'error');
-    logout();
+    logout({ force: true });
     throw new Error('TOKEN_EXPIRED');
   }
   return data;
@@ -995,9 +1060,10 @@ function renderCaseList() {
     return;
   }
   el.innerHTML = caseList.map(c => {
-    const isClosed = ['已結案', '不受理結案'].includes(c.status);
+    const isClosed = CLOSED_STATUSES.includes(c.status);
     const stageLabel = (STAGES.find(s => s.id === c.stage) || {}).label || c.stage;
     const typeLabel = CASE_TYPE_MAP[c.case_type] || c.case_type;
+    const caseId = String(c.case_id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     return `
       <div class="case-card ${isClosed ? 'closed' : 'active'}" onclick="openCase('${c.case_id}')">
         <div>
@@ -1010,7 +1076,10 @@ function renderCaseList() {
             <span>${c.updated_at ? formatDate(c.updated_at) : ''}</span>
           </div>
         </div>
-        <span style="color:#ccc;font-size:1.2rem;">›</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); withLoading(() => deleteCase('${caseId}'), this)">🗑 刪除本案</button>
+          <span style="color:#ccc;font-size:1.2rem;">›</span>
+        </div>
       </div>`;
   }).join('');
 }
@@ -1027,7 +1096,9 @@ function newCase() {
     is_cross_school: false,
     data_json: {},
     _checks: {},
+    _dirtyChecks: {},
   };
+  ensureChecklistState();
   showView('viewWizard');
   renderWizard();
 }
@@ -1043,6 +1114,8 @@ async function openCase(caseId) {
     if (res.ok) {
       currentCase = res.case;
       currentCase._checks = {};
+      currentCase._dirtyChecks = {};
+      ensureChecklistState();
       try {
         const clRes = await api('gender_checklist_load', {
           case_id: currentCase.case_id,
@@ -1064,6 +1137,10 @@ async function openCase(caseId) {
 
 // ── 返回列表 ─────────────────────────────────────────────
 function backToList() {
+  if (hasDirtyChecklistChanges()) {
+    const ok = confirm('檢核清單尚未儲存，確定要返回列表？未儲存的勾選不會寫入 Google Sheets。');
+    if (!ok) return;
+  }
   currentCase = null;
   showView('viewList');
   loadCaseList();
@@ -1074,7 +1151,7 @@ function renderWizard() {
   const c = currentCase;
   const d = c.data_json || {};
   const stage = c.stage;
-  const isClosed = ['已結案', '不受理結案'].includes(c.status);
+  const isClosed = CLOSED_STATUSES.includes(c.status);
 
   document.getElementById('wizardTitle').textContent =
     c.case_id ? (c.case_name || '案件 #' + c.case_id) : '新增案件';
@@ -1213,8 +1290,8 @@ function renderPreStage(area, btns, c, d) {
 
 async function savePreStage() {
   const data = collectPreStageData();
-  if (!data) return;
-  await saveCase(data);
+  if (!data) return false;
+  return await saveCase(data);
 }
 
 async function saveAndAdvancePreStage() {
@@ -1282,14 +1359,20 @@ function renderStage01(area, btns, c, d) {
 
       <div class="form-group">
         <label>處理決定 <span class="required">*</span></label>
-        <select id="f_accept_decision" onchange="onAcceptDecisionChange()">
-          <option value="">請選擇</option>
-          <option value="受理" ${d.accept_decision==='受理'?'selected':''}>受理調查</option>
-          <option value="暫不調查" ${d.accept_decision==='暫不調查'?'selected':''}>尊重家長意願暫不調查（保留調查權）</option>
-          <option value="不受理" ${d.accept_decision==='不受理'?'selected':''}>不受理</option>
-          ${needsTransfer ? `<option value="移送" ${d.accept_decision==='移送'?'selected':''}>移送主管機關</option>` : ''}
-          <option value="顧問諮詢" ${d.accept_decision==='顧問諮詢'?'selected':''}>顧問諮詢（暫不啟動）</option>
-        </select>
+        ${needsTransfer ? `
+          <div style="padding:12px 14px;border:1px solid var(--warm);border-radius:8px;background:var(--danger-light);font-weight:600;color:var(--danger);">
+            移送主管機關
+          </div>
+          <input type="hidden" id="f_accept_decision" value="移送">
+        ` : `
+          <select id="f_accept_decision" onchange="onAcceptDecisionChange()">
+            <option value="">請選擇</option>
+            <option value="受理" ${d.accept_decision==='受理'?'selected':''}>受理調查</option>
+            <option value="暫不調查" ${d.accept_decision==='暫不調查'?'selected':''}>尊重家長意願暫不調查（保留調查權）</option>
+            <option value="不受理" ${d.accept_decision==='不受理'?'selected':''}>不受理</option>
+            <option value="顧問諮詢" ${d.accept_decision==='顧問諮詢'?'selected':''}>顧問諮詢（暫不啟動）</option>
+          </select>
+        `}
       </div>
 
       <div class="checkbox-group" style="margin-bottom:14px;">
@@ -1378,7 +1461,8 @@ function onAcceptDecisionChange() {
 }
 
 function collectStage01Data() {
-  const decision = val('f_accept_decision');
+  const isPrincipal = (currentCase.data_json || {}).respondent_role === 'PRINCIPAL';
+  const decision = isPrincipal ? '移送' : val('f_accept_decision');
   if (!decision) { toast('請選擇處理決定', 'warn'); return null; }
   if (decision === '不受理' && !val('f_reject_reason')) {
     toast('不受理必須敘明理由', 'warn'); return null;
@@ -1411,28 +1495,38 @@ function collectStage01Data() {
 
 async function saveStage01() {
   const d = collectStage01Data();
-  if (!d) return;
-  await saveCase({ data_json: d.data_json });
+  if (!d) return false;
+  return await saveCase({ data_json: d.data_json });
 }
 
 async function saveAndAdvanceStage01() {
   if (!checklistComplete('STAGE_01')) return;
   const d = collectStage01Data();
   if (!d) return;
-  await saveCase({ data_json: d.data_json });
 
   if (d.new_status === '不受理結案' || d.new_status === '移送結案') {
-    await advanceStage({ new_status: d.new_status });
+    const ok = await saveCase({
+      data_json: d.data_json,
+      stage: 'CLOSED',
+      status: d.new_status,
+    });
+    if (ok) renderWizard();
   } else if (d.new_status === '顧問諮詢中') {
-    await saveCase({ status: d.new_status });
+    const savedData = await saveCase({ data_json: d.data_json });
+    if (!savedData) return;
+    const savedStatus = await saveCase({ status: d.new_status });
+    if (!savedStatus) return;
     toast('已標記為顧問諮詢中，等正式申請後再推進', 'ok');
     renderWizard();
   } else if (d.data_json.accept_decision === '暫不調查') {
+    const saved = await saveCase({ data_json: d.data_json });
+    if (!saved) return;
     // 暫不調查：儲存後維持在 STAGE_01，不推進
     toast('已儲存，本案維持在受理決定階段（保留調查權）', 'ok');
     renderWizard();
   } else {
-    await advanceStage();
+    const saved = await saveCase({ data_json: d.data_json });
+    if (saved) await advanceStage();
   }
 }
 
@@ -1487,13 +1581,13 @@ async function saveStage02() {
     panel_formed_date: val('f_panel_formed_date'),
     panel_members: val('f_panel_members').split('\n').filter(Boolean),
   };
-  await saveCase({ data_json });
+  return await saveCase({ data_json });
 }
 
 async function saveAndAdvanceStage02() {
   if (!checklistComplete('STAGE_02')) return;
-  await saveStage02();
-  await advanceStage();
+  const saved = await saveStage02();
+  if (saved) await advanceStage();
 }
 
 // ── STAGE_03：調查進行 ───────────────────────────────────
@@ -1542,7 +1636,7 @@ async function saveStage03() {
     extension_notes: val('f_extension_notes').split('\n').filter(Boolean),
     report_complete_date: val('f_report_complete_date'),
   };
-  await saveCase({ data_json });
+  return await saveCase({ data_json });
 }
 
 async function saveAndAdvanceStage03() {
@@ -1550,8 +1644,8 @@ async function saveAndAdvanceStage03() {
   if (!val('f_report_complete_date')) {
     toast('請填寫調查報告完成日期再推進', 'warn'); return;
   }
-  await saveStage03();
-  await advanceStage();
+  const saved = await saveStage03();
+  if (saved) await advanceStage();
 }
 
 // ── STAGE_04：性平會議決 ─────────────────────────────────
@@ -1606,13 +1700,13 @@ async function saveStage04() {
     notice_date: val('f_notice_date'),
     committee_notes: val('f_committee_notes'),
   };
-  await saveCase({ data_json });
+  return await saveCase({ data_json });
 }
 
 async function saveAndAdvanceStage04() {
   if (!checklistComplete('STAGE_04')) return;
-  await saveStage04();
-  await advanceStage();
+  const saved = await saveStage04();
+  if (saved) await advanceStage();
 }
 
 // ── STAGE_05：申復 ───────────────────────────────────────
@@ -1669,7 +1763,7 @@ async function saveStage05() {
     appeal_date: val('f_appeal_date'),
     appeal_content: val('f_appeal_content'),
   };
-  await saveCase({ data_json });
+  return await saveCase({ data_json });
 }
 
 async function saveAndAdvanceStage05() {
@@ -1677,8 +1771,8 @@ async function saveAndAdvanceStage05() {
   if (val('f_appeal_status') !== '已提出') {
     toast('請確認申復狀態為「已提出」再推進', 'warn'); return;
   }
-  await saveStage05();
-  await advanceStage();
+  const saved = await saveStage05();
+  if (saved) await advanceStage();
 }
 
 async function closeFromStage05() {
@@ -1737,14 +1831,14 @@ async function saveStage06() {
     authority_result: val('f_authority_result'),
     authority_notes: val('f_authority_notes'),
   };
-  await saveCase({ data_json });
+  return await saveCase({ data_json });
 }
 
 async function saveAndCloseStage06() {
   if (!checklistComplete('STAGE_06')) return;
   if (!confirm('結案前請確認所有文件均已歸檔完畢。')) return;
-  await saveStage06();
-  await advanceStage({ new_status: '已結案' });
+  const saved = await saveStage06();
+  if (saved) await advanceStage({ new_status: '已結案' });
 }
 
 // ── 結案畫面 ─────────────────────────────────────────────
@@ -1773,6 +1867,8 @@ function renderClosedView(c, d) {
 
 async function saveCase(updates) {
   const c = currentCase;
+  const wasNewCase = !c.case_id;
+  const oldDeadlineSignature = getDeadlineSignature(c.data_json);
   const params = {
     case_id: c.case_id || undefined,
     case_name: updates.case_name !== undefined ? updates.case_name : c.case_name,
@@ -1783,6 +1879,9 @@ async function saveCase(updates) {
     is_cross_school: updates.is_cross_school !== undefined ? updates.is_cross_school : c.is_cross_school,
     data_json: updates.data_json !== undefined ? updates.data_json : c.data_json,
   };
+  const newDeadlineSignature = getDeadlineSignature(params.data_json);
+  // 只有期限計算相關欄位變動才重寫 gender_deadlines，避免 checklist-only 或文字欄位儲存時多打一支 API。
+  const shouldSaveDeadlines = wasNewCase || oldDeadlineSignature !== newDeadlineSignature;
 
   try {
     const res = await api('gender_save', params);
@@ -1790,8 +1889,15 @@ async function saveCase(updates) {
       Object.assign(currentCase, params);
       if (res.case_id) currentCase.case_id = String(res.case_id);
       if (updates.data_json) currentCase.data_json = updates.data_json;
+      const checklistSaved = await flushChecklistChanges();
+      if (!checklistSaved) {
+        toast('案件資料已儲存，但檢核清單尚未同步，請再按一次儲存。', 'warn');
+        return false;
+      }
       toast('儲存成功', 'ok');
-      try { await saveDeadlines(); } catch(_) {}
+      if (shouldSaveDeadlines) {
+        try { await saveDeadlines(); } catch(_) {}
+      }
       return true;
     } else {
       toast('儲存失敗：' + res.error, 'error');
@@ -1870,11 +1976,12 @@ async function rollbackStage() {
   }
 }
 
-async function deleteCase() {
-  if (!currentCase.case_id) return;
-  if (!confirm('確定要刪除此案件？此操作無法復原。')) return;
+async function deleteCase(targetCase = currentCase) {
+  const caseId = typeof targetCase === 'string' ? targetCase : targetCase && targetCase.case_id;
+  if (!caseId) return;
+  if (!confirm('此操作會刪除本案資料、期限紀錄與檢核紀錄，且無法復原。\n\n本系統僅為承辦人員流程輔助工具，請確認本案為誤建、測試或不需保留之輔助紀錄。\n\n正式案件資料仍應依學校規定保存。\n\n確定刪除本案嗎？')) return;
   try {
-    const res = await api('gender_delete', { case_id: currentCase.case_id });
+    const res = await api('gender_delete', { case_id: caseId });
     if (res.ok) {
       toast('案件已刪除', 'ok');
       backToList();
@@ -2084,11 +2191,15 @@ async function withLoading(fn, btnEl) {
 // ── 檢核清單工具 ─────────────────────────────────────────
 
 function renderChecklist(stage, checks) {
+  ensureChecklistState();
   const items = CHECKLISTS[stage] || [];
   const docs  = STAGE_DOCS[stage] || [];
   if (items.length === 0) return '';
 
   const allChecked = items.every((_, i) => checks[i]);
+  const statusText = currentCase && currentCase._dirtyChecks && currentCase._dirtyChecks[stage]
+    ? '檢核清單尚未儲存'
+    : '';
 
   const checkItems = items.map((item, i) => `
     <div class="check-item ${checks[i] ? 'checked' : ''}" onclick="toggleCheck('${stage}', ${i})">
@@ -2121,6 +2232,7 @@ function renderChecklist(stage, checks) {
           : '<span style="font-size:0.8rem;background:var(--warn-light);color:var(--warn);padding:2px 10px;border-radius:12px;">未完成</span>'
         }
       </h3>
+      <div id="checklist-save-status-${stage}" style="display:${statusText ? 'block' : 'none'};font-size:0.8rem;color:var(--warn);margin:-6px 0 10px;">${statusText}</div>
       <div class="checklist-items" id="checklist-${stage}">${checkItems}</div>
       ${docs.length > 0 ? `
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--warm);">
@@ -2133,9 +2245,11 @@ function renderChecklist(stage, checks) {
 
 async function toggleCheck(stage, index) {
   if (!currentCase) return;
-  if (!currentCase._checks) currentCase._checks = {};
+  ensureChecklistState();
   if (!currentCase._checks[stage]) currentCase._checks[stage] = {};
   currentCase._checks[stage][index] = !currentCase._checks[stage][index];
+  currentCase._dirtyChecks[stage] = true;
+  setChecklistSaveStatus(stage, 'dirty');
 
   const container = document.getElementById(`checklist-${stage}`);
   if (container) {
@@ -2159,15 +2273,40 @@ async function toggleCheck(stage, index) {
     }
   }
 
-  if (currentCase.case_id) {
+}
+
+async function flushChecklistChanges() {
+  ensureChecklistState();
+  const stages = dirtyChecklistStages();
+  if (stages.length === 0) return true;
+  if (!currentCase.case_id) return true;
+
+  for (const stage of stages) {
+    setChecklistSaveStatus(stage, 'saving');
     try {
-      await api('gender_checklist_save', {
+      const res = await api('gender_checklist_save', {
         case_id: currentCase.case_id,
         stage,
-        checks: currentCase._checks[stage],
+        checks: currentCase._checks[stage] || {},
       });
-    } catch(_) {}
+      if (!res.ok) {
+        setChecklistSaveStatus(stage, 'error');
+        toast('檢核清單儲存失敗：' + (res.error || '未知錯誤'), 'error');
+        return false;
+      }
+      delete currentCase._dirtyChecks[stage];
+      setChecklistSaveStatus(stage, 'saved');
+      setTimeout(() => {
+        if (!currentCase || !currentCase._dirtyChecks || currentCase._dirtyChecks[stage]) return;
+        setChecklistSaveStatus(stage, '');
+      }, 1800);
+    } catch (e) {
+      setChecklistSaveStatus(stage, 'error');
+      if (e.message !== 'TOKEN_EXPIRED') toast('檢核清單儲存失敗，請稍後再試。', 'error');
+      return false;
+    }
   }
+  return true;
 }
 
 async function draftDoc(docType) {
